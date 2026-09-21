@@ -54,7 +54,7 @@ export const residentSchema = z
     hair: color,
     outfit: color,
     accessory: z.enum(['none', 'hat', 'glasses']),
-    greeting: z.string().trim().min(1).max(24),
+    greeting: z.string().trim().min(1).max(40),
     routine: z
       .object({
         morning: z.enum(ACTIVITIES),
@@ -153,7 +153,7 @@ export const draftSchema = placeSchema.extend({
   creator: z.string().max(39),
   story: z.string().max(180),
   resident: residentSchema
-    .extend({ name: z.string().max(24), greeting: z.string().max(24) })
+    .extend({ name: z.string().max(24), greeting: z.string().max(40) })
     .default(DEFAULT_RESIDENT),
   sign: z
     .object({

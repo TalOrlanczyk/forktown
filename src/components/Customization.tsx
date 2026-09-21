@@ -149,10 +149,10 @@ export function NeighborDetails({
           aria-invalid={attempted && !resident.greeting.trim()}
           aria-describedby={attempted && !resident.greeting.trim() ? 'error-resident' : undefined}
           value={resident.greeting}
-          maxLength={24}
+          maxLength={40}
           onChange={(e) => change('greeting', e.target.value)}
         />
-        <small>They may say this when passing another neighbor.</small>
+        <small>Up to 40 characters. They may say this when passing another neighbor.</small>
       </label>
       <div className="routine-fields">
         <h3>A day in their life</h3>
