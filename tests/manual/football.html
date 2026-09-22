@@ -89,6 +89,7 @@
       import { simulateResidents } from '/src/lib/simulation.ts';
       import { eventsForDay } from '/src/lib/events.ts';
       import { project } from '/src/lib/world.ts';
+      import { TOWN_DAY_MS, UTC_DAY_MS } from '/src/lib/town-time.ts';
       let minutes = 500,
         day = 0,
         running = !matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -115,7 +116,7 @@
         sound.textContent = enabled ? 'Mute sound' : 'Turn sound on';
       };
       document.querySelector('#new').onclick = () => {
-        day++;
+        day += UTC_DAY_MS / TOWN_DAY_MS;
         minutes = 500;
         previous = null;
       };
