@@ -1,4 +1,12 @@
-import { ZOO_GROUND, ZOO_HABITATS, ZOO_CENTER, ZOO_ENTRANCE, zooAnimalsAt } from '../lib/zoo';
+import {
+  ZOO_GROUND,
+  ZOO_HABITATS,
+  ZOO_CENTER,
+  ZOO_ENTRANCE,
+  zooAnimalsAt,
+  zooPond,
+  zooTree,
+} from '../lib/zoo';
 import { project, type Point } from '../lib/world';
 
 type Ctx = CanvasRenderingContext2D;
@@ -47,11 +55,17 @@ function fence(ctx: Ctx, from: Point, to: Point, night: boolean) {
 }
 function tree(ctx: Ctx, point: Point, night: boolean, acacia = false) {
   const p = project(point.x, point.y);
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (acacia) ctx.scale(1.5, 1.5);
+  p.x = 0;
+  p.y = 0;
   box(ctx, p.x - 3, p.y - 38, 6, 38, '#8B795C');
   const leaves = night ? '#4B7362' : '#6F965A';
   box(ctx, p.x - (acacia ? 29 : 17), p.y - 49, acacia ? 58 : 34, 16, leaves);
   box(ctx, p.x - (acacia ? 20 : 12), p.y - 58, acacia ? 42 : 24, 15, night ? '#63876B' : '#91AC68');
   box(ctx, p.x - 13, p.y - 57, 18, 5, night ? '#76936D' : '#B0BF7F');
+  ctx.restore();
 }
 function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = false) {
   const p = project(point.x, point.y),
@@ -74,15 +88,70 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
   ctx.beginPath();
   ctx.ellipse(0, 2, a.species === 'elephant' ? 25 : 15, 6, 0, 0, Math.PI * 2);
   ctx.fill();
-  const step = a.step * 2;
+  const phase = a.action?.phase;
+  const elapsed = a.action?.elapsed ?? 0;
+  const progress = a.action?.progress ?? 0;
+  // Ground effects stay below the animal, even while it is airborne.
+  if (phase === 'splash' || phase === 'swim' || phase === 'drink') {
+    ctx.strokeStyle = night ? '#A0CDD1' : '#D4F0EE';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const q = (elapsed * 0.5 + i / 3) % 1;
+      ctx.globalAlpha = 1 - q;
+      ctx.beginPath();
+      ctx.ellipse(
+        phase === 'drink' ? 37 : 0,
+        phase === 'drink' ? 14 : 2,
+        10 + q * 23,
+        4 + q * 9,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (phase === 'splash') {
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const x = Math.cos(angle) * progress * 44;
+      const y =
+        Math.sin(angle) * progress * 13 - Math.sin(progress * Math.PI) * (18 + (i % 3) * 10);
+      ctx.globalAlpha = 1 - progress;
+      box(ctx, x, y, 3, 5, '#C7EBEF');
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (phase === 'run' || phase === 'skid') {
+    for (let i = 0; i < 5; i++) {
+      const q = (elapsed * 1.5 + i / 5) % 1;
+      ctx.globalAlpha =
+        (1 - q) * 0.55 * (phase === 'skid' ? 1 - progress : Math.sin(progress * Math.PI));
+      box(
+        ctx,
+        -22 - q * 35,
+        -2 - q * 9 + (i % 2) * 4,
+        5 + q * 7,
+        3 + q * 4,
+        night ? '#ABB295' : '#E6D9B3',
+      );
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.translate(0, -a.lift);
+  ctx.rotate(a.tilt);
+  const step = a.step * (phase === 'run' ? 4 : 2);
   if (a.species === 'giraffe') {
     const fur = night ? '#BFA66D' : '#D8B864';
     for (const x of [-12, -5, 7, 13]) box(ctx, x, -20, 4, 22 + (x % 2 ? step : -step), fur);
     box(ctx, -16, -34, 32, 17, fur);
-    box(ctx, 9, -66, 7, 38, fur);
-    box(ctx, 8, -74, 21, 11, fur);
-    box(ctx, 12, -81, 3, 9, '#9A7650');
-    box(ctx, 21, -81, 3, 9, '#9A7650');
+    const stretch = a.stretch;
+    const wobble = phase === 'nibble' ? Math.sin(elapsed * 7) * 3 : 0;
+    box(ctx, 9, -66 - stretch, 7, 38 + stretch, fur);
+    box(ctx, 8 + wobble, -74 - stretch, 21, 11, fur);
+    box(ctx, 12 + wobble, -81 - stretch, 3, 9, '#9A7650');
+    box(ctx, 21 + wobble, -81 - stretch, 3, 9, '#9A7650');
     for (const [x, y] of [
       [-12, -31],
       [-2, -28],
@@ -90,8 +159,17 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
       [11, -45],
       [11, -59],
     ])
-      box(ctx, x, y, 4, 5, '#A27A43');
-    box(ctx, 23, -72, 2, 2, '#344537');
+      box(ctx, x, y - (y < -35 ? (stretch * (-y - 35)) / 31 : 0), 4, 5, '#A27A43');
+    box(ctx, 23 + wobble, -72 - stretch, 2, 2, '#344537');
+    if (phase === 'nibble') {
+      box(ctx, 27 + wobble, -67 - stretch, 8, 3, '#76A956');
+      for (let i = 0; i < 4; i++) {
+        const q = (elapsed / 2 + i / 4) % 1;
+        ctx.globalAlpha = 1 - q;
+        box(ctx, 28 + Math.sin(q * 9 + i) * 12, -95 + q * 65, 5, 3, '#7DA758');
+      }
+      ctx.globalAlpha = 1;
+    }
     box(ctx, -21, -29, 6, 3, '#9A7650');
   } else if (a.species === 'elephant') {
     const skin = night ? '#7F9593' : '#9FAEAD';
@@ -99,11 +177,36 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
     box(ctx, -18, -10, 10, 13 + step, skin);
     box(ctx, 7, -10, 10, 13 - step, skin);
     box(ctx, 10, -42, 27, 29, skin);
-    box(ctx, 29, -24, 8, 24, skin);
-    box(ctx, 34, -4, 9, 5, skin);
+    let tip = { x: 38, y: 0 };
+    const dip = { x: 37, y: 15 },
+      raised = { x: 29, y: -65 };
+    const mix = (a: Point, b: Point, q: number) => ({
+      x: a.x + (b.x - a.x) * q,
+      y: a.y + (b.y - a.y) * q,
+    });
+    if (phase === 'drink') tip = mix(tip, dip, Math.min(1, progress * 3));
+    if (phase === 'raise-trunk') tip = mix(dip, raised, progress);
+    if (phase === 'spray') tip = raised;
+    if (phase === 'lower-trunk') tip = mix(raised, tip, progress);
+    for (let i = 0; i <= 16; i++) {
+      const q = i / 16;
+      const x = (1 - q) ** 2 * 31 + 2 * (1 - q) * q * 48 + q ** 2 * tip.x;
+      const y = (1 - q) ** 2 * -24 + 2 * (1 - q) * q * (tip.y < -20 ? -29 : 4) + q ** 2 * tip.y;
+      box(ctx, x - 3, y - 3, 7, 7, skin);
+    }
+    if (phase === 'spray') {
+      for (let i = 0; i < 28; i++) {
+        const q = (elapsed * 0.9 + i / 28) % 1;
+        const x = tip.x - q * 90 + Math.sin(i * 3) * q * 8;
+        const y = tip.y - Math.sin(q * Math.PI) * 38 + q * q * 62;
+        ctx.globalAlpha = Math.min(1, elapsed * 3) * (1 - q * 0.6) * Math.min(1, (5 - elapsed) * 2);
+        box(ctx, x, y, i % 3 === 0 ? 4 : 3, 4, i % 2 ? '#A9DCE5' : '#E1F6EF');
+      }
+      ctx.globalAlpha = 1;
+    }
     box(ctx, 9, -36, 14, 24, night ? '#708584' : '#899B9D');
     box(ctx, 12, -34, 8, 16, '#A8B5AD');
-    box(ctx, 29, -33, 3, 3, '#344537');
+    box(ctx, 29, -33, phase === 'spray' ? 5 : 3, phase === 'spray' ? 1 : 3, '#344537');
     box(ctx, 27, -16, 10, 3, '#EEE4C8');
     box(ctx, -30, -26, 7, 3, skin);
   } else if (a.species === 'zebra') {
@@ -116,8 +219,12 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
     box(ctx, 8, -47, 4, 21, '#46554C');
     box(ctx, 17, -53, 3, 8, '#46554C');
     box(ctx, 25, -45, 2, 2, '#253C31');
-    box(ctx, -24, -26, 7, 2, '#46554C');
+    box(ctx, -24, -26 + (phase === 'run' ? step : 0), 7, 2, '#46554C');
   } else {
+    ctx.translate(0, a.submerged * 20 - a.stretch);
+    ctx.beginPath();
+    ctx.rect(-60, -80, 120, 80 - a.submerged * 20);
+    ctx.clip();
     box(ctx, -8, -23, 16, 24, '#3A515B');
     box(ctx, -6, -30, 13, 12, '#3A515B');
     box(ctx, -4, -19, 9, 18, night ? '#C7D7CA' : '#F0EFDD');
@@ -131,7 +238,13 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
   ctx.restore();
 }
 
-export function drawZoo(ctx: Ctx, minutes: number, night: boolean, selected = false): Object[] {
+export function drawZoo(
+  ctx: Ctx,
+  minutes: number,
+  night: boolean,
+  selected = false,
+  day = 0,
+): Object[] {
   const { left, right, top, bottom } = ZOO_GROUND;
   ground(ctx, left, top, right - left, bottom - top, night ? '#405F53' : '#A8C18C');
   // Broad, connected paths keep visitors outside the enclosures.
@@ -158,13 +271,14 @@ export function drawZoo(ctx: Ctx, minutes: number, night: boolean, selected = fa
             ? '#4D715A'
             : '#9BB97D',
     );
+    const pond = zooPond(h);
     if (h.animal === 'penguin') {
-      ground(ctx, h.left + 0.5, h.top + 0.6, 4, 2.3, night ? '#477A8B' : '#78B8C6');
+      ground(ctx, pond.left, pond.top, pond.width, pond.height, night ? '#477A8B' : '#78B8C6');
       ground(ctx, h.left + 0.8, h.top + 0.8, 3, 0.15, '#BEDBDD');
       for (let i = 0; i < 4; i++)
         ground(ctx, h.left + 0.6 + i * 1.2, h.top + 4.2, 0.8, 0.5, '#DDE4D8');
     } else if (h.animal) {
-      ground(ctx, h.left + 4.5, h.top + 3.7, 1.2, 0.8, night ? '#5C8E92' : '#8BBAC0');
+      ground(ctx, pond.left, pond.top, pond.width, pond.height, night ? '#5C8E92' : '#8BBAC0');
       for (let i = 0; i < 9; i++)
         ground(
           ctx,
@@ -174,7 +288,7 @@ export function drawZoo(ctx: Ctx, minutes: number, night: boolean, selected = fa
           0.18,
           night ? '#7C8A5E' : '#B1B77B',
         );
-      const point = { x: h.left + 0.8, y: h.top + 0.9 };
+      const point = zooTree(h);
       objects.push({
         depth: point.x + point.y,
         paint: () => tree(ctx, point, night, h.animal === 'giraffe'),
@@ -231,7 +345,7 @@ export function drawZoo(ctx: Ctx, minutes: number, night: boolean, selected = fa
       });
     }
   }
-  for (const a of zooAnimalsAt(minutes))
+  for (const a of zooAnimalsAt(minutes, day))
     objects.push({ depth: a.position.x + a.position.y, paint: () => animal(ctx, a, night) });
   objects.push({
     depth: ZOO_ENTRANCE.x + ZOO_ENTRANCE.y,

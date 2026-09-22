@@ -1,6 +1,6 @@
 # Expanding the town
 
-The town has **100 plots: ten rows (A–J) and ten columns (1–10)**, twice the previous 50-plot capacity. B5 and C5 hold the stage and green; F3–F5 and G3–G5 form the six-plot Meadow Ground; D6, D7, E6, and E7 hold the Starlight Cinema; O4�R9 hold the 24-plot Faraway Zoo, leaving 164 house plots. Every existing house keeps its ID, coordinates, grass, and entrance; existing place JSON and share links need no migration.
+The town has **100 plots: ten rows (A–J) and ten columns (1–10)**, twice the previous 50-plot capacity. B5 and C5 hold the stage and green; F3–F5 and G3–G5 form the six-plot Meadow Ground; D6, D7, E6, and E7 hold the Starlight Cinema; O4-R9 hold the 24-plot Faraway Zoo, leaving 164 house plots. Every existing house keeps its ID, coordinates, grass, and entrance; existing place JSON and share links need no migration.
 
 ## One size setting
 
@@ -33,4 +33,8 @@ This configuration supports future expansion without scattering size constants a
 
 Event trips use 0.32 tiles per town minute. The planner measures the road and venue path, aims to arrive five minutes early, and starts earlier when the resident has free time. Work, home, and sleep routines limit the available window. If a previous outing or work delays departure, residents may arrive late; trips that cannot reach the event before it ends and return before the next commitment are skipped. When necessary they leave the event early to get home on time. Return journeys use the same speed. A trip is planned for the whole day, so crossing noon, evening, or midnight never changes its destination or teleports its resident.
 
-The zoo adds a second afternoon destination for some neighbors outside the green�s audience. Six habitats contain giraffes, elephants, zebras, penguins, and two planted but empty future enclosures. All 24 site plots are reserved, and visitors use the side path and central promenade, outside the animal fences. See `tests/manual/zoo.html` for the interactive zoo and far-away visitor preview.
+The zoo adds a second afternoon destination for some neighbors outside the green-s audience. Six habitats contain giraffes, elephants, zebras, penguins, and two planted but empty future enclosures. All 24 site plots are reserved, and visitors use the side path and central promenade, outside the animal fences. See `tests/manual/zoo.html` for the interactive zoo and far-away visitor preview.
+
+### Occasional animal moments
+
+Zoo habitats take turns at their own pace: penguins every 113 real seconds, elephants every 137, zebras every 157, and giraffes every 173. Each turn lasts 30 seconds including approach and return, with the main trick lasting about 6-14 seconds. Animals rotate fairly within each habitat. Elephants drink and spray, penguins dive and swim, zebras run two laps and skid, and giraffes stretch for a leafy snack. The shared town clock drives all movement and effects, including across midnight, so pausing and reloading cannot start a different performance. Use the four animal buttons in the zoo preview to jump to a close view of each sequence.

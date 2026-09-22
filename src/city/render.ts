@@ -357,7 +357,13 @@ export function renderCity({
     isFootballPlot(selectedPlot ?? '') || isFootballPlot(hoveredPlot ?? ''),
   );
   objects.push(
-    ...drawZoo(ctx, minutes, night, isZooPlot(selectedPlot ?? '') || isZooPlot(hoveredPlot ?? '')),
+    ...drawZoo(
+      ctx,
+      minutes,
+      night,
+      isZooPlot(selectedPlot ?? '') || isZooPlot(hoveredPlot ?? ''),
+      day,
+    ),
   );
   // Rugs are floor paint: they must never be drawn over seated guests.
   objects.push(

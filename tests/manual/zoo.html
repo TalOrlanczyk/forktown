@@ -93,6 +93,10 @@
         <button id="zoo">View zoo</button><button id="follow">Follow a distant visitor</button
         ><button id="town">Whole town</button><button id="play">Play</button
         ><button id="night">Night view</button>
+        <button id="elephant">Elephant shower</button>
+        <button id="penguin">Penguin dive</button>
+        <button id="zebra">Zebra zoomies</button>
+        <button id="giraffe">Giraffe snack</button>
       </nav>
       <p id="status" role="status"></p>
       <input
@@ -112,7 +116,7 @@
       </p>
       <script type="module">
         import { renderCity } from '/src/city/render.ts';
-        import { ZOO_FRAME } from '/src/lib/zoo.ts';
+        import { ZOO_FRAME, ZOO_HABITATS, ZOO_QUIRKS, zooMomentAt } from '/src/lib/zoo.ts';
         import { HOUSE_PLOTS, eventsForDay } from '/src/lib/events.ts';
         import { places } from '/src/lib/places.ts';
         import { project, WORLD_BOUNDS } from '/src/lib/world.ts';
@@ -157,6 +161,12 @@
             zoom = 1.15;
             center = project(tracked.position.x, tracked.position.y);
           }
+          const habitat = ZOO_HABITATS.find((h) => h.animal === mode);
+          if (habitat) {
+            zoom = 2;
+            center = project(habitat.left + habitat.width / 2, habitat.top + habitat.height / 2);
+            center.y -= 35;
+          }
           if (mode === 'town') {
             zoom = Math.min(
               1300 / (WORLD_BOUNDS.right - WORLD_BOUNDS.left),
@@ -181,10 +191,13 @@
             followed: mode === 'follow' ? visitor.id : null,
             events: eventsForDay(day),
             minutes: time % 1440,
-            day,
+            day: day + Math.floor(time / 1440),
           });
           document.querySelector('#status').textContent =
             `${timeLabel(time)} · ${mode === 'follow' ? `${visitor.resident.name} from ${visitor.plot}: ${residentActivityLabel(tracked)}. Departure ${timeLabel(trip.depart)}, arrival ${timeLabel(trip.arrive)}, home ${timeLabel(trip.homeBy)}.` : `${residents.filter((r) => r.event?.id === 'zoo' && r.event.phase === 'attending').length} visitors watching the animals. Giraffes · Elephants · Zebras · Penguins · Two future habitats.`}`;
+          if (habitat)
+            document.querySelector('#status').textContent =
+              `${timeLabel(time)} · ${ZOO_QUIRKS[mode].label} · A new turn every ${ZOO_QUIRKS[mode].interval} real seconds. The slider lets you replay the whole moment.`;
           slider.value = time;
         }
         slider.oninput = () => {
@@ -213,6 +226,15 @@
           playing = !playing;
           e.target.textContent = playing ? 'Pause' : 'Play';
         };
+        for (const species of Object.keys(ZOO_QUIRKS))
+          document.querySelector(`#${species}`).onclick = () => {
+            mode = species;
+            const moment = zooMomentAt(species, 720, day);
+            time = moment.start + moment.interval - day * 1440 + 8;
+            playing = true;
+            document.querySelector('#play').textContent = 'Pause';
+            paint();
+          };
         function tick(now) {
           if (playing && last) {
             time = Math.min(1799.9, time + (now - last) / 1000);
