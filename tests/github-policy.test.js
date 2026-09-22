@@ -102,6 +102,75 @@ describe('Trusted PR policy', () => {
     ).toContain('one resident');
   });
 });
+describe('Repository owner maintenance of existing project starter houses', () => {
+  const starterCheck = (overrides = {}) =>
+    check({
+      files: [house('places/starter.json', 'modified')],
+      author: 'Owner',
+      repositoryOwner: 'owner',
+      authorPermission: 'admin',
+      readHead: async () => ({ creator: 'forktown' }),
+      readBase: async () => ({ creator: 'forktown' }),
+      ...overrides,
+    });
+
+  it('lets the admin repository owner maintain existing starter houses without self-review', async () => {
+    expect((await starterCheck()).errors).toEqual([]);
+  });
+
+  it.each([
+    { repositoryOwner: undefined },
+    { repositoryOwner: 'another-owner' },
+    { authorPermission: 'write' },
+    { authorPermission: 'maintain' },
+    { authorPermission: 'none' },
+  ])(
+    'requires independent review when ownership or admin permission is missing: %j',
+    async (overrides) => {
+      expect((await starterCheck(overrides)).errors.join(' ')).toContain('different maintainer');
+    },
+  );
+
+  it.each([
+    ['community', 'community'],
+    ['forktown', 'Owner'],
+    ['community', 'forktown'],
+  ])('requires review for community houses or changed credit: %s to %s', async (before, after) => {
+    expect(
+      (
+        await starterCheck({
+          readBase: async () => ({ creator: before }),
+          readHead: async () => ({ creator: after }),
+        })
+      ).errors.join(' '),
+    ).toContain('different maintainer');
+  });
+
+  it.each([
+    house('places/starter.json', 'removed'),
+    house('places/renamed.json', 'renamed', { previous_filename: 'places/starter.json' }),
+    house('docs/starter.json', 'renamed', { previous_filename: 'places/starter.json' }),
+  ])('requires review for starter deletion or renaming: %j', async (file) => {
+    expect((await starterCheck({ files: [file] })).errors.join(' ')).toContain(
+      'different maintainer',
+    );
+  });
+
+  it.each(['added', 'copied'])('still forbids new starter credit for %s files', async (status) => {
+    expect(
+      (await starterCheck({ files: [house('places/new.json', status)] })).errors.join(' '),
+    ).toContain('reserved');
+  });
+
+  it('still enforces resident validation for owner-maintained starter houses', async () => {
+    expect(
+      (
+        await starterCheck({ readHead: async () => ({ creator: 'forktown', resident: [] }) })
+      ).errors.join(' '),
+    ).toContain('one resident');
+  });
+});
+
 describe('Complete API inspection', () => {
   it('reads later pages so a second house cannot hide after 100 files', async () => {
     const first = Array.from({ length: 100 }, (_, i) => house(`docs/${i}.md`));
