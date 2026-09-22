@@ -84,6 +84,8 @@ export const zooPond = (h: ZooHabitat) =>
     ? { left: h.left + 0.5, top: h.top + 0.6, width: 4, height: 2.3 }
     : { left: h.left + 4.5, top: h.top + 3.7, width: 1.2, height: 0.8 };
 export const zooTree = (h: ZooHabitat) => ({ x: h.left + 0.8, y: h.top + 0.9 });
+export const ZOO_SLEEP = { start: 120, end: 240, transition: 8 } as const;
+const minuteOfDay = (time: number) => ((time % 1440) + 1440) % 1440;
 // One town minute is one real second. One actor per habitat; the others keep wandering.
 export const ZOO_QUIRKS = {
   elephant: { interval: 137, offset: 19, duration: 30, label: 'The elephant shower' },
@@ -97,6 +99,11 @@ export function zooMomentAt(species: ZooAnimal, minutes: number, day = 0) {
   const cycle = Math.floor((absolute + config.offset) / config.interval);
   const start = cycle * config.interval - config.offset;
   const elapsed = absolute - start;
+  // Skip the entire antic if it would interrupt settling down, sleep, or waking up.
+  const startMinute = minuteOfDay(start);
+  const overlapsSleep =
+    startMinute < ZOO_SLEEP.end + ZOO_SLEEP.transition &&
+    startMinute + config.duration > ZOO_SLEEP.start - ZOO_SLEEP.transition;
   return {
     ...config,
     start,
@@ -105,7 +112,7 @@ export function zooMomentAt(species: ZooAnimal, minutes: number, day = 0) {
       (((cycle + hash(`zoo:${species}`)) % (species === 'penguin' ? 5 : 3)) +
         (species === 'penguin' ? 5 : 3)) %
       (species === 'penguin' ? 5 : 3),
-    active: elapsed < config.duration,
+    active: elapsed < config.duration && !overlapsSleep,
   };
 }
 export type ZooAction =
@@ -134,6 +141,9 @@ export type ZooAnimalState = {
   tilt: number;
   stretch: number;
   submerged: number;
+  sleeping: boolean;
+  rest: number;
+  sleepPhase: number;
   action?: { phase: ZooAction; elapsed: number; progress: number };
 };
 const ease = (value: number) => {
@@ -158,6 +168,11 @@ function wander(h: ZooHabitat, index: number, time: number): Point {
 function animalAt(h: ZooHabitat, index: number, time: number): ZooAnimalState {
   const species = h.animal!;
   const moment = zooMomentAt(species, time);
+  const minute = minuteOfDay(time);
+  const bedtime = Math.floor(time / 1440) * 1440 + ZOO_SLEEP.start;
+  const rest =
+    ease((minute - ZOO_SLEEP.start + ZOO_SLEEP.transition) / ZOO_SLEEP.transition) *
+    (1 - ease((minute - ZOO_SLEEP.end) / ZOO_SLEEP.transition));
   const base = wander(h, index, time);
   const next = wander(h, index, time + 0.01);
   const state: ZooAnimalState = {
@@ -170,7 +185,18 @@ function animalAt(h: ZooHabitat, index: number, time: number): ZooAnimalState {
     tilt: 0,
     stretch: 0,
     submerged: 0,
+    sleeping: minute >= ZOO_SLEEP.start && minute < ZOO_SLEEP.end,
+    rest,
+    sleepPhase: time * 0.9 + index * 1.7,
   };
+  if (rest > 0) {
+    const bed = wander(h, index, bedtime);
+    const direction = wander(h, index, bedtime + 0.01);
+    state.position = rest === 1 ? bed : between(base, bed, rest);
+    state.facing = direction.x - bed.x - (direction.y - bed.y) >= 0 ? 1 : -1;
+    state.step = rest === 1 ? 0 : state.step * (1 - rest);
+    return state;
+  }
   if (!moment.active || moment.actor !== index) return state;
   const t = moment.elapsed;
   const pond = zooPond(h),

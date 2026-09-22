@@ -18,6 +18,63 @@ const startFor = (kind: ZooAnimal, time = 720) => {
 const actorAt = (kind: ZooAnimal, time: number) =>
   zooAnimalsAt(time).find((a) => a.species === kind && a.action)!;
 
+describe('Zoo bedtime', () => {
+  it('sleeps from 2 AM until 4 AM every town day, without walking or antics', () => {
+    for (const day of [-1, 0, 1, 9, 100]) {
+      const beds = zooAnimalsAt(120, day);
+      expect(beds).toHaveLength(14);
+      for (const minute of [119.999, 240, 240.001])
+        expect(zooAnimalsAt(minute, day).every((a) => !a.sleeping)).toBe(true);
+      for (let minute = 120; minute < 240; minute += 0.7) {
+        const animals = zooAnimalsAt(minute, day);
+        animals.forEach((a, index) => {
+          expect(a.sleeping).toBe(true);
+          expect(a.rest).toBe(1);
+          expect(a.position).toEqual(beds[index].position);
+          expect(a.facing).toBe(beds[index].facing);
+          expect(a.step).toBe(0);
+          expect(a.lift).toBe(0);
+          expect(a.submerged).toBe(0);
+          expect(a.action).toBeUndefined();
+          expect(zooMomentAt(a.species, minute, day).active).toBe(false);
+        });
+      }
+      expect(zooAnimalsAt(1620, day)).toEqual(zooAnimalsAt(180, day + 1));
+      expect(zooAnimalsAt(180, day)[0].sleepPhase).not.toBe(beds[0].sleepPhase);
+    }
+  });
+
+  it('settles and wakes smoothly and skips entire antics that overlap bedtime', () => {
+    for (let day = 0; day < 20; day++) {
+      for (const minute of [112, 120, 240, 248]) {
+        const before = zooAnimalsAt(minute - 0.0001, day);
+        const after = zooAnimalsAt(minute + 0.0001, day);
+        before.forEach((a, index) => {
+          expect(distance(a.position, after[index].position)).toBeLessThan(0.002);
+          expect(Math.abs(a.rest - after[index].rest)).toBeLessThan(0.002);
+          if (minute === 120 || minute === 240) {
+            expect(a.action).toBeUndefined();
+            expect(after[index].action).toBeUndefined();
+          }
+        });
+      }
+      for (const kind of species) {
+        for (let minute = 82; minute < 248; minute++) {
+          const moment = zooMomentAt(kind, minute, day);
+          const localStart = moment.start - day * 1440;
+          if (localStart < 248 && localStart + moment.duration > 112)
+            expect(moment.active).toBe(false);
+        }
+        expect(
+          Array.from({ length: 200 }, (_, i) => zooMomentAt(kind, 248 + i, day).active).some(
+            Boolean,
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+});
+
 describe('Occasional zoo antics', () => {
   it('gives each habitat a quiet majority, a different cadence, and every animal a turn', () => {
     expect(new Set(species.map((s) => ZOO_QUIRKS[s].interval)).size).toBe(4);

@@ -97,12 +97,13 @@
         <button id="penguin">Penguin dive</button>
         <button id="zebra">Zebra zoomies</button>
         <button id="giraffe">Giraffe snack</button>
+        <button id="sleep">Sleepy zoo · 3 AM</button>
       </nav>
       <p id="status" role="status"></p>
       <input
         id="time"
         type="range"
-        min="360"
+        min="0"
         max="1800"
         step="0.05"
         value="900"
@@ -220,6 +221,14 @@
         };
         document.querySelector('#night').onclick = () => {
           night = !night;
+          paint();
+        };
+        document.querySelector('#sleep').onclick = () => {
+          mode = 'zoo';
+          time = 180;
+          night = true;
+          playing = true;
+          document.querySelector('#play').textContent = 'Pause';
           paint();
         };
         document.querySelector('#play').onclick = (e) => {

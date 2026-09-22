@@ -105,6 +105,73 @@ function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = fals
   });
   ctx.restore();
 }
+function sleepingAnimal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boolean) {
+  ctx.save();
+  ctx.scale(1, 1 + Math.sin(a.sleepPhase) * 0.025);
+  const dark = '#344537';
+  if (a.species === 'penguin') {
+    // A little round loaf, with flippers folded and beak tucked into its chest.
+    box(ctx, -10, -18, 21, 17, '#3A515B');
+    box(ctx, -7, -24, 15, 10, '#3A515B');
+    box(ctx, -5, -15, 12, 13, night ? '#C7D7CA' : '#F0EFDD');
+    box(ctx, 4, -16, 6, 3, '#D8AB63');
+    box(ctx, 1, -20, 5, 1, '#F0EFDD');
+    box(ctx, -9, -12, 5, 9, '#30464F');
+    box(ctx, -7, -1, 6, 3, '#D8AB63');
+    box(ctx, 3, -1, 6, 3, '#D8AB63');
+  } else if (a.species === 'elephant') {
+    const skin = night ? '#7F9593' : '#9FAEAD';
+    box(ctx, -25, -24, 45, 23, skin);
+    box(ctx, -19, -3, 17, 6, skin);
+    box(ctx, 5, -3, 18, 6, skin);
+    box(ctx, 12, -28, 25, 23, skin);
+    box(ctx, 9, -25, 14, 20, night ? '#708584' : '#899B9D');
+    box(ctx, 12, -22, 8, 13, '#A8B5AD');
+    box(ctx, 28, -20, 6, 2, dark);
+    // Curled trunk resting beside the folded front feet.
+    box(ctx, 32, -14, 7, 15, skin);
+    box(ctx, 25, -3, 13, 6, skin);
+    box(ctx, 24, -7, 6, 7, skin);
+    box(ctx, -30, -14, 7, 3, skin);
+  } else {
+    const giraffe = a.species === 'giraffe';
+    const fur = giraffe ? (night ? '#BFA66D' : '#D8B864') : night ? '#B7C2B5' : '#EAE9D5';
+    const marking = giraffe ? '#A27A43' : '#46554C';
+    box(ctx, -19, -20, 36, 18, fur);
+    for (const x of [-14, 5]) {
+      box(ctx, x, -3, 14, 5, fur);
+      box(ctx, x + 10, 0, 4, 2, marking);
+    }
+    // Fold the long neck back so the head rests on the animal's body.
+    box(ctx, 10, giraffe ? -37 : -28, 8, giraffe ? 27 : 18, fur);
+    box(ctx, giraffe ? -1 : 5, giraffe ? -40 : -31, 23, 11, fur);
+    for (const x of [-14, -5, 4]) box(ctx, x, -18, 4, giraffe ? 5 : 14, marking);
+    if (giraffe) {
+      box(ctx, 12, -30, 4, 5, marking);
+      box(ctx, 12, -46, 3, 7, marking);
+      box(ctx, 19, -46, 3, 7, marking);
+    } else {
+      box(ctx, 13, -36, 4, 7, marking);
+      box(ctx, 8, -28, 4, 12, marking);
+    }
+    box(ctx, giraffe ? 3 : 20, giraffe ? -36 : -27, 5, 2, dark);
+    box(ctx, -24, -13, 6, 2, marking);
+  }
+  ctx.restore();
+  // Undo the facing flip so the sleepy letters always read the right way round.
+  ctx.save();
+  ctx.scale(a.facing, 1);
+  const height = a.species === 'giraffe' ? 52 : a.species === 'penguin' ? 30 : 36;
+  for (let i = 0; i < 3; i++) {
+    const q = (((a.sleepPhase / 6 + i / 3) % 1) + 1) % 1;
+    ctx.globalAlpha = a.rest * Math.sin(q * Math.PI) * 0.8;
+    ctx.fillStyle = night ? '#D9E6D3' : '#627C70';
+    ctx.font = `${8 + q * 5}px "Space Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('z', 12 + q * 12, -height - q * 23);
+  }
+  ctx.restore();
+}
 function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boolean) {
   const p = project(a.position.x, a.position.y);
   ctx.save();
@@ -114,6 +181,15 @@ function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boo
   ctx.beginPath();
   ctx.ellipse(0, 2, a.species === 'elephant' ? 25 : 15, 6, 0, 0, Math.PI * 2);
   ctx.fill();
+  if (a.rest > 0) {
+    ctx.globalAlpha = a.rest;
+    sleepingAnimal(ctx, a, night);
+    ctx.globalAlpha = 1 - a.rest;
+    if (a.rest === 1) {
+      ctx.restore();
+      return;
+    }
+  }
   const phase = a.action?.phase;
   const elapsed = a.action?.elapsed ?? 0;
   const progress = a.action?.progress ?? 0;
