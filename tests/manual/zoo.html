@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forktown · Willow Grove Zoo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #eef0df;
+        color: #304d40;
+        font: 15px system-ui;
+      }
+      main {
+        max-width: 1420px;
+        margin: auto;
+        padding: 24px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      h1 {
+        font: 38px Georgia;
+        margin: 8px 0;
+      }
+      p {
+        line-height: 1.6;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 3px;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 20px 0;
+      }
+      button {
+        padding: 10px 15px;
+        border: 1px solid #8caa91;
+        border-radius: 6px;
+        background: #f9f8ee;
+        color: #304d40;
+        cursor: pointer;
+      }
+      input {
+        width: 100%;
+        accent-color: #47725a;
+      }
+      canvas {
+        width: 100%;
+        height: auto;
+        background: #dce5c9;
+        border-radius: 12px;
+      }
+      a {
+        color: inherit;
+      }
+      #status {
+        min-height: 48px;
+      }
+      @media (max-width: 600px) {
+        main {
+          padding: 12px;
+        }
+        header {
+          display: block;
+        }
+        h1 {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <span class="eyebrow">FORKTOWN · O4–R9</span>
+          <h1>A wild little corner of town.</h1>
+          <p>Four animal species. Six spacious habitats. A whole afternoon to explore.</p>
+        </div>
+        <a href="/#venue=zoo">Visit the live zoo →</a>
+      </header>
+      <nav>
+        <button id="zoo">View zoo</button><button id="follow">Follow a distant visitor</button
+        ><button id="town">Whole town</button><button id="play">Play</button
+        ><button id="night">Night view</button>
+        <button id="elephant">Elephant shower</button>
+        <button id="penguin">Penguin dive</button>
+        <button id="zebra">Zebra zoomies</button>
+        <button id="giraffe">Giraffe snack</button>
+      </nav>
+      <p id="status" role="status"></p>
+      <input
+        id="time"
+        type="range"
+        min="360"
+        max="1800"
+        step="0.05"
+        value="900"
+        aria-label="Town time"
+      />
+      <canvas width="1400" height="880" aria-label="Zoo and long-distance walking preview"></canvas>
+      <p>
+        Preview neighbors exercise the real travel planner. Follow a visitor and move the time
+        slider to check their departure, arrival, and walk home. Preview homes do not change the
+        live town.
+      </p>
+      <script type="module">
+        import { renderCity } from '/src/city/render.ts';
+        import { ZOO_FRAME, ZOO_HABITATS, ZOO_QUIRKS, zooMomentAt } from '/src/lib/zoo.ts';
+        import { HOUSE_PLOTS, eventsForDay } from '/src/lib/events.ts';
+        import { places } from '/src/lib/places.ts';
+        import { project, WORLD_BOUNDS } from '/src/lib/world.ts';
+        import { residentTrips } from '/src/lib/resident-trips.ts';
+        import {
+          simulateResidents,
+          residentActivityLabel,
+          timeLabel,
+        } from '/src/lib/simulation.ts';
+        const canvas = document.querySelector('canvas'),
+          ctx = canvas.getContext('2d'),
+          slider = document.querySelector('#time');
+        const homes = HOUSE_PLOTS.slice(0, 36).map((plot, index) => ({
+          ...places[index % places.length],
+          id: `zoo-neighbor-${index}`,
+          plot: plot.id,
+          resident: {
+            ...places[index % places.length].resident,
+            routine: { morning: 'stroll', afternoon: 'stroll', evening: 'stroll', night: 'stroll' },
+          },
+        }));
+        const day = 7;
+        const visitor = homes.find((h) =>
+          residentTrips(homes, day)
+            .get(h.id)
+            ?.some((t) => t.event.id === 'zoo' && t.depart < 720),
+        );
+        const trip = residentTrips(homes, day)
+          .get(visitor.id)
+          .find((t) => t.event.id === 'zoo');
+        let time = 900,
+          mode = 'zoo',
+          playing = false,
+          night = false,
+          last = 0;
+        function paint() {
+          const residents = simulateResidents(homes, time % 1440, day + Math.floor(time / 1440));
+          const tracked = residents.find((r) => r.id === visitor.id);
+          let zoom = Math.min(1300 / ZOO_FRAME.width, 800 / ZOO_FRAME.height),
+            center = ZOO_FRAME.center;
+          if (mode === 'follow') {
+            zoom = 1.15;
+            center = project(tracked.position.x, tracked.position.y);
+          }
+          const habitat = ZOO_HABITATS.find((h) => h.animal === mode);
+          if (habitat) {
+            zoom = 2;
+            center = project(habitat.left + habitat.width / 2, habitat.top + habitat.height / 2);
+            center.y -= 35;
+          }
+          if (mode === 'town') {
+            zoom = Math.min(
+              1300 / (WORLD_BOUNDS.right - WORLD_BOUNDS.left),
+              780 / WORLD_BOUNDS.bottom,
+            );
+            center = {
+              x: (WORLD_BOUNDS.left + WORLD_BOUNDS.right) / 2,
+              y: WORLD_BOUNDS.bottom / 2,
+            };
+          }
+          renderCity({
+            ctx,
+            width: 1400,
+            height: 880,
+            camera: { x: 700 - center.x * zoom, y: 440 - center.y * zoom, zoom },
+            places: homes,
+            selectedPlot: 'O6',
+            hoveredPlot: null,
+            night,
+            showPlots: mode === 'town',
+            residents,
+            followed: mode === 'follow' ? visitor.id : null,
+            events: eventsForDay(day),
+            minutes: time % 1440,
+            day: day + Math.floor(time / 1440),
+          });
+          document.querySelector('#status').textContent =
+            `${timeLabel(time)} · ${mode === 'follow' ? `${visitor.resident.name} from ${visitor.plot}: ${residentActivityLabel(tracked)}. Departure ${timeLabel(trip.depart)}, arrival ${timeLabel(trip.arrive)}, home ${timeLabel(trip.homeBy)}.` : `${residents.filter((r) => r.event?.id === 'zoo' && r.event.phase === 'attending').length} visitors watching the animals. Giraffes · Elephants · Zebras · Penguins · Two future habitats.`}`;
+          if (habitat)
+            document.querySelector('#status').textContent =
+              `${timeLabel(time)} · ${ZOO_QUIRKS[mode].label} · A new turn every ${ZOO_QUIRKS[mode].interval} real seconds. The slider lets you replay the whole moment.`;
+          slider.value = time;
+        }
+        slider.oninput = () => {
+          time = Number(slider.value);
+          paint();
+        };
+        document.querySelector('#zoo').onclick = () => {
+          mode = 'zoo';
+          time = 900;
+          paint();
+        };
+        document.querySelector('#follow').onclick = () => {
+          mode = 'follow';
+          time = trip.depart;
+          paint();
+        };
+        document.querySelector('#town').onclick = () => {
+          mode = 'town';
+          paint();
+        };
+        document.querySelector('#night').onclick = () => {
+          night = !night;
+          paint();
+        };
+        document.querySelector('#play').onclick = (e) => {
+          playing = !playing;
+          e.target.textContent = playing ? 'Pause' : 'Play';
+        };
+        for (const species of Object.keys(ZOO_QUIRKS))
+          document.querySelector(`#${species}`).onclick = () => {
+            mode = species;
+            const moment = zooMomentAt(species, 720, day);
+            time = moment.start + moment.interval - day * 1440 + 8;
+            playing = true;
+            document.querySelector('#play').textContent = 'Pause';
+            paint();
+          };
+        function tick(now) {
+          if (playing && last) {
+            time = Math.min(1799.9, time + (now - last) / 1000);
+            paint();
+          }
+          last = now;
+          requestAnimationFrame(tick);
+        }
+        paint();
+        requestAnimationFrame(tick);
+      </script>
+    </main>
+  </body>
+</html>

@@ -1,3 +1,5 @@
+import ZooInfo from './components/ZooInfo';
+import { isZooPlot, ZOO_VENUE } from './lib/zoo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -52,6 +54,8 @@ import { simulateResidents, residentActivityLabel, timeLabel } from './lib/simul
 
 type Panel = 'places' | 'neighbors' | 'events';
 function initialSelection() {
+  if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'zoo')
+    return ZOO_VENUE.plot;
   if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'cinema')
     return CINEMA_VENUE.plot;
   if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'football')
@@ -141,7 +145,7 @@ export default function App() {
     window.history.replaceState(
       null,
       '',
-      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFootballPlot(plotId ?? '') ? '#venue=football' : isCinemaPlot(plotId ?? '') ? '#venue=cinema' : ''}`,
+      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFootballPlot(plotId ?? '') ? '#venue=football' : isCinemaPlot(plotId ?? '') ? '#venue=cinema' : isZooPlot(plotId ?? '') ? '#venue=zoo' : ''}`,
     );
     if (plotId && focus) city.current?.focus(plotId);
   }, []);
@@ -377,7 +381,15 @@ export default function App() {
             </button>
           </div>
           <div className="town-panel-content">
-            {selectedVenue?.kind === 'cinema' ? (
+            {selectedVenue?.kind === 'zoo' ? (
+              <ZooInfo
+                minutes={clock.minutes}
+                watching={
+                  residents.filter((r) => r.event?.id === 'zoo' && r.event.phase === 'attending')
+                    .length
+                }
+              />
+            ) : selectedVenue?.kind === 'cinema' ? (
               <CinemaInfo minutes={clock.minutes} day={clock.day} />
             ) : selectedFootball ? (
               <FootballMatch

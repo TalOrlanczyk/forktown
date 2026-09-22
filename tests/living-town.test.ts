@@ -110,7 +110,7 @@ describe('A small predictable daily life', () => {
         expect(state.position.y).toBeLessThanOrEqual(ROAD_MAX_Y + 0.5);
       }
   });
-  it('finishes walks at home before routine changes and bedtime', () => {
+  it('continues trips across free periods and returns home by bedtime', () => {
     const wanderer = {
       ...sample,
       resident: {
@@ -127,8 +127,10 @@ describe('A small predictable daily life', () => {
     for (const boundary of [720, 1080, 1320]) {
       const before = simulateResidents([wanderer], boundary - 0.001)[0];
       const after = simulateResidents([wanderer], boundary)[0];
-      expect(before.position).toEqual(plotEntrance(plot));
-      expect(after.position).toEqual(before.position);
+      expect(
+        Math.hypot(after.position.x - before.position.x, after.position.y - before.position.y),
+      ).toBeLessThan(0.001);
+      if (boundary === 1320) expect(after.position).toEqual(plotEntrance(plot));
     }
   });
   it('keeps sleepers indoors and follows daytime activity choices', () => {

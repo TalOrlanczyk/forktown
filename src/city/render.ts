@@ -1,3 +1,5 @@
+import { drawZoo, zooSignHit } from './zoo';
+import { insideZoo, isZooPlot, ZOO_VENUE } from '../lib/zoo';
 import { drawHouse, houseBounds } from './houses';
 import { drawResident } from './residents';
 import { drawVenue, venueBounds } from './venues';
@@ -306,7 +308,7 @@ export function renderCity({
     }
   // Stable plot IDs keep existing contributions in place as the town grows.
   for (const plot of PLOTS) {
-    if (isFootballPlot(plot.id) || isCinemaPlot(plot.id)) continue;
+    if (isFootballPlot(plot.id) || isCinemaPlot(plot.id) || isZooPlot(plot.id)) continue;
     const pt = plotCenter(plot);
     const occupied = byPlot.has(plot.id) || !!venueAt(plot.id);
     const active = selectedPlot === plot.id;
@@ -354,6 +356,15 @@ export function renderCity({
     night,
     isFootballPlot(selectedPlot ?? '') || isFootballPlot(hoveredPlot ?? ''),
   );
+  objects.push(
+    ...drawZoo(
+      ctx,
+      minutes,
+      night,
+      isZooPlot(selectedPlot ?? '') || isZooPlot(hoveredPlot ?? ''),
+      day,
+    ),
+  );
   // Rugs are floor paint: they must never be drawn over seated guests.
   objects.push(
     ...drawCinema(
@@ -365,7 +376,7 @@ export function renderCity({
     ),
   );
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const point = plotCenter(plot);
     drawVenue(
@@ -398,9 +409,11 @@ export function renderCity({
         !isRoad(x, y) &&
         !insideFootball({ x, y }) &&
         !insideCinema({ x, y }) &&
-        !PLOTS.some(
-          (plot) => venueAt(plot.id) && Math.abs(plot.x - x) <= 1 && Math.abs(plot.y - y) <= 1,
-        ) &&
+        !insideZoo({ x, y }) &&
+        !VENUES.some((venue) => {
+          const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
+          return Math.abs(plot.x - x) <= 1 && Math.abs(plot.y - y) <= 1;
+        }) &&
         x % BLOCK_SIZE === 0 &&
         y % BLOCK_SIZE === 2 &&
         seed % 2
@@ -409,7 +422,7 @@ export function renderCity({
       }
     }
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const pt = plotCenter(plot);
     objects.push({
@@ -503,6 +516,10 @@ export function cityHit(
   const plot = PLOTS.find((plot) => plot.id === plotId);
   let depth = plot ? houseDepth(plot) : -Infinity;
   let target: CityHit | undefined = plot ? { kind: 'place', id: plot.id } : undefined;
+  if (insideZoo(unproject(point.x, point.y)) || zooSignHit(point)) {
+    depth = -1;
+    target = { kind: 'place', id: ZOO_VENUE.plot };
+  }
   const board = project(15.5, 22.2);
   const hitsBoard =
     point.x >= board.x - 92 &&
@@ -514,7 +531,7 @@ export function cityHit(
     target = { kind: 'place', id: FOOTBALL_VENUE.plot };
   }
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const p = plotCenter(plot),
       bounds = venueBounds(venue);

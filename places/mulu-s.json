@@ -1,0 +1,40 @@
+{
+  "id": "mulu-s",
+  "name": "Mulu's",
+  "creator": "HayluMulu",
+  "plot": "F6",
+  "building": "cottage",
+  "color": "#789B76",
+  "decoration": "bench",
+  "story": "Everyone’s welcome at this extremely basic sweet home. \nPlease smoke on the balcony or the bench with friends.\nDO NOT STEP ON THE GRASS!!!!!!!!!!!.\nenjoy :)",
+  "design": {
+    "wall": "#F0E5C8",
+    "trim": "#846C56",
+    "floors": 2,
+    "roof": "gable",
+    "windows": "cross",
+    "garden": "wildflowers",
+    "feature": "balcony"
+  },
+  "resident": {
+    "name": "Mulu",
+    "skin": "#785a36",
+    "hair": "#fffdcc",
+    "outfit": "#4bbcbe",
+    "accessory": "glasses",
+    "greeting": "Yo!",
+    "routine": {
+      "morning": "home",
+      "afternoon": "work",
+      "evening": "stroll",
+      "night": "sleep"
+    }
+  },
+  "sign": {
+    "mode": "html",
+    "text": "HELLO",
+    "color": "#FFF4D4",
+    "background": "#35554A",
+    "html": "<div style=\"background-color: #182B28; color: #FFD58A; text-align: center\"><strong style=\"font-size: 28px\">MULU'S</strong><br><strong style=\"font-size: 16px\">Smoke • Chill • Stay</strong><br></div>"
+  }
+}

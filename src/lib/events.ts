@@ -1,5 +1,6 @@
 import { getPlot, hash, PLOTS } from './world.ts';
 import { isFootballPlot } from './football.ts';
+import { ZOO_VENUE, ZOO_SPOTS, isZooPlot, insideZoo } from './zoo.ts';
 import { CINEMA_VENUE, CINEMA_SEATS, isCinemaPlot, insideCinema, cinemaProgram } from './cinema.ts';
 
 // Public venues belong to the town, outside the one-house contribution files.
@@ -7,6 +8,7 @@ export const VENUES = [
   { id: 'green', plot: 'C5', name: 'The Lunch Green', kind: 'green' },
   { id: 'stage', plot: 'B5', name: 'The Little Stage', kind: 'stage' },
   CINEMA_VENUE,
+  ZOO_VENUE,
 ] as const;
 export type Venue = (typeof VENUES)[number];
 export type EventPose = 'sit' | 'read' | 'sip' | 'chat' | 'play' | 'cheer' | 'sway' | 'dance';
@@ -14,6 +16,11 @@ type EventSpot = { x: number; y: number; facing: 'se' | 'sw' | 'ne' | 'nw' };
 // Coordinates relative to the plot center. These are usable lawn spots, not a street queue.
 // Keep the stage audience in front of the platform (which ends at local y = 0.2).
 export const EVENT_SPOTS: Record<Venue['kind'], readonly EventSpot[]> = {
+  zoo: ZOO_SPOTS.map((spot) => ({
+    x: spot.x - getPlot(ZOO_VENUE.plot)!.x - 0.5,
+    y: spot.y - getPlot(ZOO_VENUE.plot)!.y - 0.5,
+    facing: 'ne',
+  })),
   cinema: CINEMA_SEATS.map((seat) => ({ x: seat.x - 23.5, y: seat.y - 15.5, facing: 'ne' })),
   green: [
     { x: -0.55, y: 0, facing: 'se' },
@@ -40,12 +47,17 @@ export function eventSpot(venue: Venue, index: number) {
   return { position: { x: plot.x + 0.5 + spot.x, y: plot.y + 0.5 + spot.y }, facing: spot.facing };
 }
 export function insideVenue(venue: Venue, point: { x: number; y: number }) {
+  if (venue.kind === 'zoo') return insideZoo(point);
   if (venue.kind === 'cinema') return insideCinema(point);
   const plot = getPlot(venue.plot)!;
   return Math.abs(point.x - plot.x - 0.5) <= 1.5 && Math.abs(point.y - plot.y - 0.5) <= 1.5;
 }
 export const venueAt = (plot: string) =>
-  isCinemaPlot(plot) ? CINEMA_VENUE : VENUES.find((venue) => venue.plot === plot);
+  isZooPlot(plot)
+    ? ZOO_VENUE
+    : isCinemaPlot(plot)
+      ? CINEMA_VENUE
+      : VENUES.find((venue) => venue.plot === plot);
 export const HOUSE_PLOTS = PLOTS.filter((plot) => !venueAt(plot.id) && !isFootballPlot(plot.id));
 
 export const EVENT_CHOICES = {
@@ -139,6 +151,18 @@ export function eventsForDay(day: number, minutes = 720): TownEvent[] {
       homeBy: 1710,
     },
     cinemaEventForDay(minutes < 360 ? day - 1 : day),
+    {
+      id: 'zoo',
+      name: 'An afternoon with the animals',
+      description:
+        'A long walk to giraffes, elephants, zebras and penguins. Two more habitats are growing for the future.',
+      venue: ZOO_VENUE,
+      period: 'afternoon',
+      depart: 720,
+      start: 840,
+      end: 1020,
+      homeBy: 1320,
+    },
   ];
 }
 // Night events use the evening's timeline: 02:30 is minute 1590, not 150.

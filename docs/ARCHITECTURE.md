@@ -69,4 +69,4 @@ The Meadow Ground occupies a six-plot public site in the expanded town. Its inte
 
 ## Current boundaries
 
-One neighborhood, 100 plots, six building families, four decorations, and one resident per place. House customization and restricted exterior signs are supported; arbitrary HTML pages are not. Mobile supports touch drag and zoom buttons; multi-touch pinch zoom is not implemented. The contributor directory is the accessible way to browse Canvas content. There is no long-term plot reservation, automated account verification, multiplayer, persistent user backend, or content moderation service.
+One neighborhood, 200 plots, six building families, four decorations, and one resident per place. House customization and restricted exterior signs are supported; arbitrary HTML pages are not. Mobile supports touch drag and zoom buttons; multi-touch pinch zoom is not implemented. The contributor directory is the accessible way to browse Canvas content. There is no long-term plot reservation, automated account verification, multiplayer, persistent user backend, or content moderation service.

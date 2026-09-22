@@ -200,7 +200,7 @@ describe('Live broadcast director', () => {
       const featured: string[] = [];
       for (let time = 360; time < 585; time += FOLLOW_SECONDS) {
         const residents = simulateResidents(homes, time, day);
-        if (time >= 450)
+        if (time >= 540)
           expect(residents.filter((r) => r.event?.phase !== 'attending')).toHaveLength(1);
         const shot = liveShotAt(program, time, residents);
         expect(shot.kind).toBe('neighbor');
