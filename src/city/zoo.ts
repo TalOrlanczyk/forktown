@@ -8,18 +8,27 @@ import {
   zooPond,
   zooTree,
 } from '../lib/zoo';
-import { project, type Point } from '../lib/world';
+import { project, TILE_W, type Point } from '../lib/world';
 import { drawVenueTitle } from './venue-title';
 
 type Ctx = CanvasRenderingContext2D;
 type Object = { depth: number; paint: () => void };
+// Inset the entire raised plaque from the street, including its upper corners.
+const entranceSign = {
+  point: { x: ZOO_ENTRANCE.x, y: ZOO_GROUND.top + 1.3 },
+  width: 170,
+  height: 34,
+  rise: 40,
+};
 export function zooSignHit(point: Point) {
-  const gate = project(ZOO_ENTRANCE.x, ZOO_ENTRANCE.y);
+  const gate = project(entranceSign.point.x, entranceSign.point.y);
+  const x = point.x - gate.x;
+  const y = point.y - gate.y - x * 0.5;
   return (
-    point.x >= gate.x - 135 &&
-    point.x <= gate.x + 135 &&
-    point.y >= gate.y - 72 &&
-    point.y <= gate.y - 12
+    x >= -entranceSign.width / 2 &&
+    x <= entranceSign.width / 2 &&
+    y >= -entranceSign.rise &&
+    y <= -entranceSign.rise + entranceSign.height
   );
 }
 function ground(ctx: Ctx, x: number, y: number, w: number, h: number, color: string) {
@@ -71,7 +80,14 @@ function tree(ctx: Ctx, point: Point, night: boolean, acacia = false) {
 }
 function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = false) {
   const p = project(point.x, point.y),
-    width = small ? 138 : 270;
+    width = small ? 138 : entranceSign.width;
+  ctx.save();
+  // Follow the north fence's isometric angle instead of spanning the street.
+  if (!small) {
+    ctx.transform(1, 0.5, 0, 1, p.x, p.y);
+    p.x = 0;
+    p.y = 0;
+  }
   for (const side of [-1, 1]) {
     const x = p.x + side * (width / 2 - 15);
     box(ctx, x - 3, p.y - 30, 6, 30, night ? '#6E7560' : '#927B59');
@@ -80,14 +96,14 @@ function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = fals
   }
   drawVenueTitle(ctx, {
     x: p.x,
-    y: p.y - (small ? 51 : 72),
+    y: p.y - (small ? 51 : entranceSign.rise),
     width,
-    height: small ? 34 : 60,
+    height: small ? 34 : entranceSign.height,
     title: text,
-    subtitle: small ? undefined : 'A LITTLE WILD, A LOT TO LOVE',
-    fontSize: small ? 13 : 24,
+    fontSize: small ? 13 : 16,
     night,
   });
+  ctx.restore();
 }
 function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boolean) {
   const p = project(a.position.x, a.position.y);
@@ -358,8 +374,9 @@ export function drawZoo(
   for (const a of zooAnimalsAt(minutes, day))
     objects.push({ depth: a.position.x + a.position.y, paint: () => animal(ctx, a, night) });
   objects.push({
-    depth: ZOO_ENTRANCE.x + ZOO_ENTRANCE.y,
-    paint: () => sign(ctx, ZOO_ENTRANCE, ZOO_VENUE.name, night),
+    // Sort at the near end so fence posts cannot paint over the lettering.
+    depth: entranceSign.point.x + entranceSign.point.y + entranceSign.width / TILE_W,
+    paint: () => sign(ctx, entranceSign.point, ZOO_VENUE.name, night),
   });
   if (selected) {
     ctx.strokeStyle = '#F2E2A1';
