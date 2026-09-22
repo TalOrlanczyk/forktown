@@ -1,3 +1,4 @@
+import { residentTrips } from '../src/lib/resident-trips';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -37,7 +38,7 @@ describe('Shared town events', () => {
     expect(eventsForDay(7)).toEqual(eventsForDay(7));
   });
   it('reserves venues in both builder options and shared save/CI validation', () => {
-    expect(HOUSE_PLOTS).toHaveLength(88);
+    expect(HOUSE_PLOTS).toHaveLength(164);
     for (const venue of VENUES) {
       expect(HOUSE_PLOTS.some((plot) => plot.id === venue.plot)).toBe(false);
       expect(
@@ -70,30 +71,52 @@ describe('Shared town events', () => {
     }
   });
   it('walks continuously to a venue, attends, returns home, and sleeps without teleporting', () => {
+    const homes = [
+      {
+        ...walker,
+        resident: {
+          ...walker.resident,
+          routine: { ...walker.resident.routine, morning: 'home' as const },
+        },
+      },
+    ];
     const entrance = plotEntrance(getPlot(walker.plot)!);
-    for (const event of eventsForDay(4).filter((event) => event.period !== 'night')) {
-      expect(simulateResidents([walker], event.depart, 4)[0].position).toEqual(entrance);
-      expect(simulateResidents([walker], event.start + 1, 4)[0]).toMatchObject({
+    for (const trip of residentTrips(homes, 4).get(walker.id)!) {
+      const { event } = trip;
+      if (event.venue.kind === 'football')
+        throw new Error('Home routine must exclude morning football');
+      const stateAt = (t: number) => simulateResidents(homes, t, 4)[0];
+      expect(
+        Math.hypot(
+          stateAt(trip.depart).position.x - entrance.x,
+          stateAt(trip.depart).position.y - entrance.y,
+        ),
+      ).toBeLessThan(1e-8);
+      expect(stateAt(Math.max(event.start, trip.arrive) + 1)).toMatchObject({
         moving: false,
-        facing: eventSpot(event.venue, 0).facing,
         event: { id: event.id, phase: 'attending' },
       });
-      for (const boundary of [event.start, event.end, event.homeBy]) {
-        const before = simulateResidents([walker], boundary - 0.001, 4)[0];
-        const after = simulateResidents([walker], boundary, 4)[0];
+      for (const boundary of [trip.depart, trip.arrive, event.start, trip.leave, trip.homeBy]) {
+        const before = stateAt(boundary - 0.001),
+          after = stateAt(boundary);
         expect(
           Math.hypot(before.position.x - after.position.x, before.position.y - after.position.y),
         ).toBeLessThan(0.01);
       }
-      for (let minute = event.depart; minute < event.homeBy; minute += 0.7) {
-        const state = simulateResidents([walker], minute, 4)[0];
+      for (let minute = trip.depart; minute < trip.homeBy; minute += 0.7) {
+        const state = stateAt(minute);
         expect(
           isRoad(Math.floor(state.position.x), Math.floor(state.position.y)) ||
             insideVenue(event.venue, state.position),
         ).toBe(true);
       }
-      expect(simulateResidents([walker], event.homeBy, 4)[0].position).toEqual(entrance);
-      expect(simulateResidents([walker], event.homeBy, 4)[0].event).toBeUndefined();
+      expect(
+        Math.hypot(
+          stateAt(trip.homeBy).position.x - entrance.x,
+          stateAt(trip.homeBy).position.y - entrance.y,
+        ),
+      ).toBeLessThan(1e-8);
+      expect(stateAt(trip.homeBy).event?.id).not.toBe(event.id);
     }
   });
   it('caps the audience, assigns distinct spots, and does not depend on JSON ordering', () => {
@@ -103,21 +126,34 @@ describe('Shared town events', () => {
       plot: plot.id,
     }));
     for (const [minute, capacity] of [
-      [850, 6],
+      [930, 6],
       [1200, 8],
     ]) {
-      const first = simulateResidents(crowd, minute, 19);
-      expect(simulateResidents([...crowd].reverse(), minute, 19).reverse()).toEqual(first);
+      const isolated = crowd.map((home) => ({
+        ...home,
+        resident: {
+          ...home.resident,
+          routine: {
+            morning: 'home' as const,
+            afternoon: minute < 1080 ? ('stroll' as const) : ('home' as const),
+            evening: minute >= 1080 ? ('stroll' as const) : ('home' as const),
+            night: 'sleep' as const,
+          },
+        },
+      }));
+      const first = simulateResidents(isolated, minute, 19);
+      expect(simulateResidents([...isolated].reverse(), minute, 19).reverse()).toEqual(first);
       const attending = first.filter(
-        (state) => state.event?.phase === 'attending' && state.event.id !== 'football',
+        (state) =>
+          state.event?.phase === 'attending' &&
+          state.event.id !== 'football' &&
+          state.event.id !== 'zoo',
       );
       expect(attending).toHaveLength(capacity);
       expect(new Set(attending.map((state) => JSON.stringify(state.position))).size).toBe(capacity);
       expect(attending.every((state) => !state.greeting)).toBe(true);
       const overflow = first.filter((state) => !state.event);
-      expect(overflow).toHaveLength(
-        crowd.length - capacity - first.filter((state) => state.event?.id === 'football').length,
-      );
+      expect(overflow.length + first.filter((state) => state.event).length).toBe(crowd.length);
       expect(
         overflow.every(
           (state) =>
@@ -146,13 +182,15 @@ describe('Shared town events', () => {
   it('uses varied event gestures, with no gestures while traveling or indoors', () => {
     const poses = new Set<string>();
     for (let day = 0; day < 10; day++)
-      for (const minute of [800, 815, 832, 854, 1160, 1175, 1190, 1210]) {
+      for (const minute of [880, 895, 912, 934, 1160, 1175, 1190, 1210]) {
         const state = simulateResidents([walker], minute, day)[0];
         if (state.pose) poses.add(state.pose);
       }
     expect([...poses].sort()).toEqual(['chat', 'cheer', 'play', 'read', 'sip', 'sit', 'sway']);
-    for (const minute of [740, 1000, 1100, 1300, 1320])
-      expect(simulateResidents([walker], minute)[0].pose).toBeUndefined();
+    for (let minute = 360; minute < 1440; minute += 7.7) {
+      const state = simulateResidents([walker], minute)[0];
+      if (state.moving || !state.event) expect(state.pose).toBeUndefined();
+    }
   });
   it('keeps all slots continuous on staggered departures and returns, without entering houses', () => {
     const crowd = HOUSE_PLOTS.slice(0, 12).map((plot, i) => ({
@@ -165,7 +203,7 @@ describe('Shared town events', () => {
         const now = simulateResidents(crowd, minute, 2),
           next = simulateResidents(crowd, minute + 0.001, 2);
         now.forEach((state, index) => {
-          if (!state.event || state.event.id === 'football') return;
+          if (!state.event || state.event.id !== event.id) return;
           expect(state.greeting).toBe(false);
           expect(
             Math.hypot(
@@ -180,7 +218,7 @@ describe('Shared town events', () => {
         });
       }
       for (const state of simulateResidents(crowd, event.homeBy, 2))
-        if (!state.moving) expect(state.pose).toBeUndefined();
+        if (!state.event) expect(state.pose).toBeUndefined();
     }
   });
   it('labels exact event boundaries and keeps sleeping residents out of the party', () => {

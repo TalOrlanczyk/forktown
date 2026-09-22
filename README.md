@@ -1,106 +1,84 @@
 # Forktown 🌱
 
-**A living pixel town, built one pull request at a time.**
+**A living pixel town, built one pull request at a time.** Design a home and a neighbor; contribute one JSON file.
 
-Make your first open-source contribution a place of your own. Design a home, give its resident a simple daily rhythm, and add your own outdoor sign with one JSON file. After review and merging, the shared city rebuilds with your place, your name, and a link to share.
+[Visit the town](https://renanbazinin.github.io/forktown/) · [Detailed contributor guide](CONTRIBUTING.md)
 
-Forktown begins with eight clearly labeled starter places on a 100-plot map. Those starter places use `creator: "forktown"` as a project credit; they are not real community contributions or a GitHub account endorsement.
+## 1. Start in the live town
 
-## Take a look locally
+Open the [live site](https://renanbazinin.github.io/forktown/) and click **Find your way in**. You’ll see **Fork on GitHub**:
 
-Use Node.js 24 LTS (Node 22.12+ is supported).
+<img src="docs/images/contribute-live.jpg" alt="Live site: Make yourself at home shows the three contribution steps and a Fork on GitHub button." width="640">
+
+**Why can’t I build here?** The published town is read-only. It can show houses and their JSON, but cannot save files to your computer’s project. Building happens in your local copy; a reviewed pull request brings your house to the shared town.
+
+## 2. Fork it and run it locally
+
+You’ll need a GitHub account, Git, and Node.js 24 (22.12+ also works). No API keys or database setup.
+
+Click [Fork on GitHub](https://github.com/renanbazinin/forktown/fork), then **Create fork**. In a terminal, replace `YOUR_USERNAME` below with your GitHub username and paste:
 
 ```sh
+git clone https://github.com/YOUR_USERNAME/forktown.git
+cd forktown
+git switch -c add-my-place
 npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. No accounts, API keys, database, or remote services are required.
+Leave that terminal running. Open [localhost:5173](http://localhost:5173) and click **Find your way in**. Now the button says **Build a place**:
 
-For a clean recording view, open `http://localhost:5173/live/`: automatic coverage of live events, outdoor neighbors, and the town cat, with only one minute of neighborhood scenery per town day. Includes automatic sound where permitted, a small population card, and labels for the resident or cat being followed. See [the live broadcast script and recording notes](docs/LIVE.md).
+<img src="docs/images/contribute-local.jpg" alt="Localhost: the same welcome dialog now offers Build a place." width="640">
 
-## Make your first contribution
+> Still seeing **Fork on GitHub**? Check that you opened localhost and started `npm run dev`. The live site and `npm run preview` do not enable the builder.
 
-1. Fork and clone the repository, create a contribution branch, and run your local town using the commands above.
-2. Choose **Find your way in → Build a place**. Use Home, Neighbor, and Outdoor sign to customize it.
-3. Choose **Continue to save → Save to my project** to create your JSON in `places/`.
-4. Open **See my saved JSON** to learn from your file, then commit and push it.
-5. Open a pull request against the original repository.
+## 3. Make it yours
 
-Read the [step-by-step contribution guide](CONTRIBUTING.md). The published GitHub Pages site is for exploring and reading house files; its builder is disabled. A local preview stays in your own town until a pull request is reviewed, merged, and deployed. Local builder drafts are saved on your device for your next visit.
+Click **Build a place**. Enter your real GitHub username, then customize **Home**, **Neighbor**, and **Outdoor sign**. Scroll down to choose an open plot, add a story, and check your **File id**.
 
-## What works
+<img src="docs/images/contribute-builder.jpg" alt="Local builder: Willow Lodge preview beside the Home, Neighbor, and Outdoor sign tabs, username field, house styles, and colors." width="800">
 
-- An original isometric city renderer, with trees, roads, a river, little residents, and six building styles.
-- Wildflower patches on open plots, small daytime flocks, and chimney smoke and evening window silhouettes when neighbors are home. Ambient movement pauses with the town.
-- A daily 08:00–12:30 duck walk: a mother and five ducklings leave the river, follow the street beside the Lunch Green to the first houses, turn around, and return to the water. The last duckling briefly dawdles and catches up. Nearby wandering residents stop for four seconds, turn toward the ducks, and show a heart bubble before resuming their walk. The family appears in both town and live views, without needing resident participation.
-- Mouse and touch panning, zoom buttons, scroll zoom, and keyboard map controls.
-- Custom floors, roof shapes, wall and trim colors, window styles, gardens, porches, and balconies.
-- Residents with names, outfits, accessories, greetings, and simple day and night routines.
-- Road-following strolls with four directional walking views, distance-based footsteps, occasional neighbor greetings, bedtime, and a camera that follows a resident.
-- Shared daily events: picnics, books, and lawn games at the Lunch Green; rock, acoustic, and jazz evenings at the Little Stage. Strolling neighbors can join a small audience and walk home afterward. Both venues are reserved public plots.
-- A nightly 23:30–02:30 disco at the Little Stage, with a DJ, dancing night owls, steady pastel lights, and an original dance track. Guests walk home by 04:30; sleeping neighbors stay indoors.
-- The four-plot Starlight Cinema on D6, D7, E6, and E7: three original animated shorts every night from 20:30, with six-second Forktown intermissions, a twelve-seat picnic lawn, projector, string lights, and popcorn stand. Film lengths stay independent; each day selects three distinct titles from the library. Night owls can attend instead of the disco. See [the cinema and film library guide](docs/CINEMA.md).
-- The six-plot Meadow Ground: four-a-side football all day, a live scoreboard, passing, shots, saves, goal celebrations, spectators, and short breaks between halves. Zoom close with Town sound enabled for kicks, whistles, and cheers. See [Football at the Meadow Ground](docs/FOOTBALL.md).
-- A shared UTC-based 24-minute town day, automatic day/night lighting, pause/resume-live, and reduced-motion support.
-- Optional original music: day and night themes, three concert arrangements, and a midnight dance track, with a volume control, soft transitions, and automatic pause when the tab is hidden. See [Forktown FM](docs/MUSIC.md) for the listening preview and score guide.
-- Exterior signs: simple text or a restricted HTML/CSS artwork language, drawn as noninteractive canvas textures.
-- A full-screen town with compact controls. Explore opens searchable places and open plots; the neighbor and music buttons reveal residents and events. All directories work with a keyboard.
-- Place stories, contributor credit, and shareable `#place=id` links without server routing.
-- A live building editor, local preview, direct saves to your local checkout, JSON export, and browser-based contribution instructions.
-- A shared schema used by the editor, build, and contribution validator.
-- Friendly errors for occupied plots, duplicate ids, invalid names, unsupported fields, and malformed JSON.
-- Automated checks on pull requests and optional GitHub Pages deployment.
-- All fonts, art, and place data are served locally. The hosted city needs no backend and includes no analytics; development saves use only the local server.
+Names and plots in these screenshots are examples. **One new house + one neighbor per pull request.** Choosing a plot does not reserve it.
 
-## Project map
+## 4. Save your house
 
-```text
-places/                    One JSON file per place — start here!
-examples/                  A copyable contribution example
-src/lib/schema.ts          The contribution contract and friendly validator
-src/lib/world.ts           Stable plot coordinates and projection math
-src/city/render.ts         Terrain and depth-sorted world renderer
-src/city/houses.ts         Customizable homes and exterior sign textures
-src/city/residents.ts      Pixel resident artwork
-src/lib/simulation.ts      Deterministic road routes and daily routines
-src/lib/sign.ts            Restricted HTML/CSS-to-artwork compiler
-src/components/City.tsx    Map interaction and accessible controls
-src/components/Contribute.tsx  Building editor and JSON export
-src/App.tsx                The town, directory, and onboarding
-scripts/validate-places.ts Command-line contribution checks
-scripts/local-places.ts    Development-only saves to the local places folder
-tests/                    Contribution rules and world behavior
-docs/                     Architecture and publishing guides
-.github/                  Pull request checks, templates, and deployment
+Choose **Continue to save**, then **Save to my project** (scroll down if needed).
+
+<img src="docs/images/contribute-save.jpg" alt="Save screen: the house JSON and Save to my project button, with instructions to commit the new file and open a pull request." width="800">
+
+This creates `places/YOUR_FILE_ID.json` and adds the house to your local town. Click **See my saved JSON** to review it, or **See my place in town** to visit. Saving locally does not publish it.
+
+## 5. Send your pull request
+
+Open a second terminal in your `forktown` folder and check your work:
+
+```sh
+npm run check
 ```
 
-## Useful commands
+Once it passes, replace `YOUR_FILE_ID` with the file id from the builder and run:
 
-| Command             | Purpose                                                  |
-| ------------------- | -------------------------------------------------------- |
-| `npm run dev`       | Start the local city                                     |
-| `npm run validate`  | Check every place with beginner-friendly errors          |
-| `npm test`          | Test contribution rules and map behavior                 |
-| `npm run typecheck` | Check the app’s TypeScript                               |
-| `npm run build`     | Validate and build the production site                   |
-| `npm run preview`   | Serve the production build locally                       |
-| `npm run check`     | Run tests, validation, type checks, and production build |
+```sh
+git add places/YOUR_FILE_ID.json
+git --no-pager diff --cached
+git commit -m "Add my place to Forktown"
+git push -u origin add-my-place
+```
 
-## Put your town online
+On your GitHub fork, click **Compare & pull request**. Target **renanbazinin/forktown → main**, check that only your new house file is included, complete the checklist, and click **Create pull request**.
 
-The app is ready to publish as a static site. Set `VITE_GITHUB_REPOSITORY=your-name/your-repository` to connect GitHub links. The included GitHub Pages workflow is opt-in and knows how to set the repository base path.
+After checks, maintainer review, merge, and deployment, your house appears in the [live town](https://renanbazinin.github.io/forktown/). If changes are requested, commit and push them on the same branch to update that pull request.
 
-See [publishing](docs/PUBLISHING.md). Creating this local project does not create a GitHub repository or publish anything.
+## About Forktown
 
-## A foundation for more
+Forktown makes a first open-source contribution something you can visit. Each contributed house brings a neighbor, a story, and its creator’s credit into a shared pixel town.
 
-The living edition keeps the first contribution small. Morning, afternoon, and evening each use one choice: stroll, work at home, or relax at home. At night, choose sleep or a night out. Up to eight night owls join the midnight party and walk home by 04:30. Others take one three-hour walk near home, with departures spread between 22:00 and 02:00, then sleep indoors until morning. Omitted night choices default to sleep. The clock follows UTC: one real minute is one town hour, with a new town day every 24 real minutes. Visitors at the same moment see the same daily phase when their device clocks agree. There are no accounts, leaderboards, real-time multiplayer, or automatic merges. Every place has a bounded plot and reviewed data. New districts, original sprites, more building types, and richer interactions can follow the community’s needs.
+The town has a life of its own: neighbors take walks, meet at concerts, watch films, and stop by football matches. A full day and night lasts 24 real minutes. Explore at your own pace, follow a resident, or enjoy the [live view](https://renanbazinin.github.io/forktown/live/).
 
-See [architecture and extension points](docs/ARCHITECTURE.md) and [the roadmap](docs/ROADMAP.md).
+Want to help beyond building a house? Improve the guides, report a bug, or contribute to the town itself. The [project guide](docs/PROJECT_GUIDE.md) covers features, code structure, and development commands.
 
-Be kind, stay curious, and help the next person find their way in. [Code of conduct](CODE_OF_CONDUCT.md) · [MIT license](LICENSE)
+---
 
-## Growing the town
+[JSON fields & contribution rules](CONTRIBUTING.md) · [Features, project map & commands](docs/PROJECT_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [Publishing](docs/PUBLISHING.md) · [Live view](docs/LIVE.md) · [Roadmap](docs/ROADMAP.md)
 
-Change the row and column counts in `src/lib/town-config.ts` to add plots without moving existing homes. Roads, validation, the builder, and camera framing follow automatically. See [Expanding the town](docs/EXPANDING_THE_TOWN.md) for examples and compatibility rules.
+[Code of conduct](CODE_OF_CONDUCT.md) · [MIT license](LICENSE)

@@ -1,3 +1,5 @@
+import { residentTrips } from '../src/lib/resident-trips';
+import { nightBedtime } from '../src/lib/night-routine';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -127,7 +129,7 @@ describe('Starlight Cinema', () => {
     expect(new Set(CINEMA_SEATS.map((p) => JSON.stringify(p))).size).toBe(12);
     for (const seat of CINEMA_SEATS) expect(insideCinema(seat)).toBe(true);
   });
-  it('walks a bounded audience in and home continuously, without sending them to two venues', () => {
+  it('walks a bounded audience continuously, then goes home or continues to the disco', () => {
     const day = 8,
       guests = cinemaGuests(crowd, day),
       event = cinemaEventForDay(day);
@@ -142,30 +144,43 @@ describe('Starlight Cinema', () => {
       expect(r.pose).toBe('sit');
       expect(residentActivityLabel(r)).toContain('Watching a film');
     }
-    for (let t = event.depart; t < event.homeBy; t += 0.75) {
-      for (const r of at(t).filter((r) => guests.includes(r.id))) {
+    for (const id of guests) {
+      const trip = residentTrips(crowd, day)
+        .get(id)!
+        .find((p) => p.event.id === 'cinema')!;
+      for (let t = trip.depart; t < trip.homeBy; t += 0.75) {
+        const r = at(t).find((r) => r.id === id)!;
         expect(r.event?.id).toBe('cinema');
         expect(
           isRoad(Math.floor(r.position.x), Math.floor(r.position.y)) || insideCinema(r.position),
         ).toBe(true);
         expect(r.greeting).toBe(false);
       }
-    }
-    for (const boundary of [event.depart, event.start, 1320, event.end, 1440, event.homeBy]) {
-      const before = at(boundary - 0.001),
-        after = at(boundary + 0.001);
-      for (const id of guests)
+      for (const boundary of [
+        trip.depart,
+        trip.arrive,
+        event.start,
+        1320,
+        trip.leave,
+        1440,
+        trip.homeBy,
+      ]) {
         expect(
           distance(
-            before.find((r) => r.id === id)!.position,
-            after.find((r) => r.id === id)!.position,
+            at(boundary - 0.001).find((r) => r.id === id)!.position,
+            at(boundary + 0.001).find((r) => r.id === id)!.position,
           ),
         ).toBeLessThan(0.01);
-    }
-    for (const r of at(event.homeBy).filter((r) => guests.includes(r.id))) {
-      expect(r.activity).toBe('sleep');
-      expect(r.event).toBeUndefined();
-      expect(r.position).toEqual(plotEntrance(getPlot(r.home.plot)!));
+      }
+      const r = at(trip.homeBy + 0.001).find((r) => r.id === id)!;
+      if (trip.continuesTo) {
+        expect(r.event?.id).toBe('night-party');
+        expect(distance(r.position, trip.route.at(-1)!)).toBeLessThan(0.01);
+      } else {
+        expect(r.activity).toBe(trip.homeBy >= nightBedtime(r.home) ? 'sleep' : 'stroll');
+        expect(r.event).toBeUndefined();
+        expect(r.position).toEqual(plotEntrance(getPlot(r.home.plot)!));
+      }
     }
     const sleepers = crowd.map((p) => ({
       ...p,

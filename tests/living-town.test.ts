@@ -4,7 +4,7 @@ import { placeSchema, validatePlaces } from '../src/lib/schema';
 import { compileSign, SIGN_EXAMPLE } from '../src/lib/sign';
 import { periodAt, roadPath, simulateResidents, timeLabel } from '../src/lib/simulation';
 import { getPlot, isRoad, plotEntrance, project, ROAD_MAX_X, ROAD_MAX_Y } from '../src/lib/world';
-import { eventsForDay, insideVenue } from '../src/lib/events';
+import { eventsForDay, HOUSE_PLOTS, insideVenue } from '../src/lib/events';
 import { insideFootball } from '../src/lib/football';
 
 const places = readdirSync('places')
@@ -110,7 +110,7 @@ describe('A small predictable daily life', () => {
         expect(state.position.y).toBeLessThanOrEqual(ROAD_MAX_Y + 0.5);
       }
   });
-  it('finishes walks at home before routine changes and bedtime', () => {
+  it('continues trips across free periods and returns home by bedtime', () => {
     const wanderer = {
       ...sample,
       resident: {
@@ -127,8 +127,10 @@ describe('A small predictable daily life', () => {
     for (const boundary of [720, 1080, 1320]) {
       const before = simulateResidents([wanderer], boundary - 0.001)[0];
       const after = simulateResidents([wanderer], boundary)[0];
-      expect(before.position).toEqual(plotEntrance(plot));
-      expect(after.position).toEqual(before.position);
+      expect(
+        Math.hypot(after.position.x - before.position.x, after.position.y - before.position.y),
+      ).toBeLessThan(0.001);
+      if (boundary === 1320) expect(after.position).toEqual(plotEntrance(plot));
     }
   });
   it('keeps sleepers indoors and follows daytime activity choices', () => {
@@ -156,9 +158,24 @@ describe('A small predictable daily life', () => {
     ).toBe(false);
   });
   it('greets nearby walkers without naming a meeting partner', () => {
+    // Include enough local strollers to keep walkers outside the event guest lists.
+    const neighbors = HOUSE_PLOTS.slice(0, 24).map((plot, index) => ({
+      ...sample,
+      id: `greeting-${index}`,
+      plot: plot.id,
+      resident: {
+        ...sample.resident,
+        routine: {
+          morning: 'stroll' as const,
+          afternoon: 'stroll' as const,
+          evening: 'stroll' as const,
+          night: 'sleep' as const,
+        },
+      },
+    }));
     let found = false;
     for (let minute = 360; minute < 1320; minute++) {
-      const states = simulateResidents(places, minute);
+      const states = simulateResidents(neighbors, minute);
       for (const resident of states.filter((state) => state.greeting)) {
         found = true;
         expect(resident.activity).toBe('stroll');

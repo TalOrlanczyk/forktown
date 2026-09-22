@@ -134,7 +134,13 @@ describe('Live broadcast director', () => {
 
   it('follows people between highlights and holds the full selected football match', () => {
     expect(shotAt(12, 420).kind).toBe('neighbor');
-    expect(shotAt(12, 1000).kind).toBe('neighbor');
+    const afterAfternoon =
+      Math.max(
+        ...eventsForDay(12)
+          .filter((event) => event.period === 'afternoon')
+          .map((event) => event.end),
+      ) + 5;
+    expect(shotAt(12, afterAfternoon).kind).toBe('neighbor');
     const day = Array.from({ length: 30 }, (_, day) => day).find((day) =>
       liveHighlights(day).includes('football'),
     )!;
@@ -200,7 +206,7 @@ describe('Live broadcast director', () => {
       const featured: string[] = [];
       for (let time = 360; time < 585; time += FOLLOW_SECONDS) {
         const residents = simulateResidents(homes, time, day);
-        if (time >= 450)
+        if (time >= 540)
           expect(residents.filter((r) => r.event?.phase !== 'attending')).toHaveLength(1);
         const shot = liveShotAt(program, time, residents);
         expect(shot.kind).toBe('neighbor');

@@ -4,12 +4,37 @@ import { cityHit } from '../src/city/render';
 import { placeSchema } from '../src/lib/schema';
 import { simulateResidents, type ResidentState } from '../src/lib/simulation';
 import { getPlot, plotCenter, project } from '../src/lib/world';
+import { ZOO_SIGN, ZOO_SIGN_DEPTH } from '../src/city/zoo';
 
 const places = readdirSync('places')
   .filter((file) => file.endsWith('.json'))
   .map((file) => placeSchema.parse(JSON.parse(readFileSync(`places/${file}`, 'utf8'))));
 
 describe('Map selection follows visible depth', () => {
+  it.each(['S5', 'S6', 'S7', 'S8', 'S9', 'P10', 'Q10', 'R10'])(
+    'selects the visible roof on %s instead of the zoo ground behind it',
+    (plot) => {
+      const home = { ...places[0], plot, design: { ...places[0].design, floors: 3 as const } };
+      const center = plotCenter(getPlot(plot)!);
+      expect(cityHit({ x: center.x, y: center.y - 100 }, [home], [])).toEqual({
+        kind: 'place',
+        id: plot,
+      });
+    },
+  );
+  it('keeps the raised zoo sign selectable in front of a resident', () => {
+    const sign = project(ZOO_SIGN.point.x, ZOO_SIGN.point.y);
+    const resident = {
+      ...simulateResidents(places, 402)[0],
+      activity: 'stroll' as const,
+      position: ZOO_SIGN.point,
+    };
+    expect(resident.position.x + resident.position.y).toBeLessThan(ZOO_SIGN_DEPTH);
+    expect(cityHit({ x: sign.x, y: sign.y - 24 }, [], [resident])).toEqual({
+      kind: 'place',
+      id: 'O6',
+    });
+  });
   it('selects the studio wall covering Milo at 06:42 instead of the resident behind it', () => {
     // Captured overlap from the original 5-by-5 town; keep it independent of route changes.
     const residents = simulateResidents(places, 402).map((resident) =>

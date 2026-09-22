@@ -35,10 +35,12 @@
     <button data-time="1000">Walking home</button>
     <button data-time="1200">Evening concert</button>
     <button data-time="1290">After the show</button>
+    <button data-time="1320">Night begins (22:00)</button>
     <button data-time="1380">Walking to the party</button>
     <button data-time="1430">Midnight party</button>
     <button data-time="60">After midnight</button>
     <button data-time="210">Walking home at night</button>
+    <button data-time="240">Late walks (04:00)</button>
     <button data-time="300">Bedtime</button>
     <label><input type="checkbox" id="crowd" /> Full venue + overflow</label>
     <button id="animate">Animate preview</button>
@@ -90,7 +92,9 @@
           hoveredPlot: null,
           showPlots: false,
         });
-        document.querySelector('#status').textContent = `${timeLabel(minutes)} · ${event.name}`;
+        const outdoors = residents.filter((resident) => resident.activity === 'stroll').length;
+        document.querySelector('#status').textContent =
+          `${timeLabel(minutes)} · ${event.name} · ${outdoors}/${residents.length} neighbors outside`;
         document.querySelector('#residents').replaceChildren(
           ...residents.map((resident) => {
             const item = document.createElement('li');

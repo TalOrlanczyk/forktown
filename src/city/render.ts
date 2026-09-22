@@ -1,7 +1,10 @@
+import { drawZoo, zooSignHit, ZOO_SIGN_DEPTH } from './zoo';
+import { insideZoo, isZooPlot, ZOO_VENUE } from '../lib/zoo';
 import { drawHouse, houseBounds } from './houses';
 import { drawResident } from './residents';
 import { drawVenue, venueBounds } from './venues';
 import { drawBirds, drawMeadow } from './ambience';
+import { paintGroundLayer } from './ground-cache';
 import { drawFootball } from './football';
 import { drawTownCat } from './cat';
 import { drawDuck } from './ducks';
@@ -55,6 +58,41 @@ export type Camera = { x: number; y: number; zoom: number };
 const houseDepth = (plot: Plot) => plot.x + plot.y + 0.8;
 const venueDepth = (plot: Plot) => plot.x + plot.y + 0.1;
 const residentDepth = (resident: ResidentState) => resident.position.x + resident.position.y;
+// World geometry and seeds are fixed between builds; only their palette changes.
+const terrain = Array.from({ length: WORLD_WIDTH * WORLD_HEIGHT }, (_, i) => {
+  const x = Math.floor(i / WORLD_HEIGHT),
+    y = i % WORLD_HEIGHT;
+  return { x, y, point: project(x + 0.5, y + 0.5), seed: hash(`${x},${y}`), road: isRoad(x, y) };
+});
+const venuePlots = VENUES.map((venue) => PLOTS.find((plot) => plot.id === venue.plot)!);
+const trees = terrain.flatMap(({ x, y, point }) => {
+  const seed = hash(`tree${x},${y}`);
+  const result: { point: Point; depth: number; scale: number; seed: number }[] = [];
+  if (
+    (x === 0 || y === 0 || y >= WORLD_HEIGHT - 2 || (x === WORLD_WIDTH - 1 && y >= 9)) &&
+    seed % 3 !== 0
+  )
+    result.push({
+      point: { x: point.x + (seed % 15) - 7, y: point.y },
+      depth: x + y,
+      scale: 1 + (seed % 5) * 0.12,
+      seed,
+    });
+  if (
+    x < ROAD_MAX_X &&
+    y < ROAD_MAX_Y &&
+    !isRoad(x, y) &&
+    !insideFootball({ x, y }) &&
+    !insideCinema({ x, y }) &&
+    !insideZoo({ x, y }) &&
+    !venuePlots.some((plot) => Math.abs(plot.x - x) <= 1 && Math.abs(plot.y - y) <= 1) &&
+    x % BLOCK_SIZE === 0 &&
+    y % BLOCK_SIZE === 2 &&
+    seed % 2
+  )
+    result.push({ point, depth: x + y, scale: 0.65, seed });
+  return result;
+});
 export const DAY: Palette = {
   grass: '#B9CF9B',
   grassAlt: '#B4CA94',
@@ -249,50 +287,69 @@ export function renderCity({
   ctx.scale(camera.zoom, camera.zoom);
   const byPlot = new Map(places.map((place) => [place.plot, place]));
   const residentsByHome = new Map(residents.map((resident) => [resident.id, resident]));
-  const terrainPoint = (x: number, y: number) => project(x, y);
-  const b = terrainPoint(WORLD_WIDTH, 0),
-    c = terrainPoint(WORLD_WIDTH, WORLD_HEIGHT),
-    d = terrainPoint(0, WORLD_HEIGHT);
-  poly(
-    ctx,
-    [
-      [d.x, d.y],
-      [c.x, c.y],
-      [c.x, c.y + 16],
-      [d.x, d.y + 16],
-    ],
-    p.earth,
-  );
-  poly(
-    ctx,
-    [
-      [b.x, b.y],
-      [c.x, c.y],
-      [c.x, c.y + 16],
-      [b.x, b.y + 16],
-    ],
-    p.edge,
-  );
-  poly(
-    ctx,
-    [
-      [0, 0],
-      [b.x, b.y],
-      [c.x, c.y],
-      [d.x, d.y],
-    ],
-    p.grass,
-  );
-  for (let x = 0; x < WORLD_WIDTH; x++)
-    for (let y = 0; y < WORLD_HEIGHT; y++) {
-      const pt = project(x + 0.5, y + 0.5);
-      const seed = hash(`${x},${y}`);
+  const view = {
+    left: -camera.x / camera.zoom,
+    right: (width - camera.x) / camera.zoom,
+    top: -camera.y / camera.zoom,
+    bottom: (height - camera.y) / camera.zoom,
+  };
+  const visible = (point: Point, rx: number, above: number, below: number) =>
+    point.x + rx >= view.left &&
+    point.x - rx <= view.right &&
+    point.y + below >= view.top &&
+    point.y - above <= view.bottom;
+  const groundKey = [
+    night,
+    showPlots,
+    selectedPlot,
+    hoveredPlot,
+    width,
+    height,
+    [...byPlot.keys()].sort().join(','),
+  ].join(':');
+  paintGroundLayer(ctx, groundKey, (ctx) => {
+    const terrainPoint = (x: number, y: number) => project(x, y);
+    const b = terrainPoint(WORLD_WIDTH, 0),
+      c = terrainPoint(WORLD_WIDTH, WORLD_HEIGHT),
+      d = terrainPoint(0, WORLD_HEIGHT);
+    poly(
+      ctx,
+      [
+        [d.x, d.y],
+        [c.x, c.y],
+        [c.x, c.y + 16],
+        [d.x, d.y + 16],
+      ],
+      p.earth,
+    );
+    poly(
+      ctx,
+      [
+        [b.x, b.y],
+        [c.x, c.y],
+        [c.x, c.y + 16],
+        [b.x, b.y + 16],
+      ],
+      p.edge,
+    );
+    poly(
+      ctx,
+      [
+        [0, 0],
+        [b.x, b.y],
+        [c.x, c.y],
+        [d.x, d.y],
+      ],
+      p.grass,
+    );
+    for (const { x, y, point: pt, seed, road } of terrain) {
+      if (!visible(pt, 60, 24, 24)) continue;
       if (seed % 4 === 0) diamond(ctx, pt.x, pt.y, 38, 19, p.grassAlt);
       if (x === WORLD_WIDTH - 2 || (x === WORLD_WIDTH - 1 && y < 8)) {
         diamond(ctx, pt.x, pt.y, 38, 19, p.water);
         rect(ctx, pt.x - 12 + (seed % 16), pt.y, 12, 1, p.waterLight);
         if (y % 3 === 0) rect(ctx, pt.x + 3, pt.y + 6, 7, 1, p.waterLight);
-      } else if (isRoad(x, y)) {
+      } else if (road) {
         diamond(ctx, pt.x, pt.y, 38, 19, p.roadEdge);
         diamond(ctx, pt.x, pt.y - 1, 36, 18, p.road);
         if (seed % 3 === 0) rect(ctx, pt.x + (seed % 10) - 5, pt.y + 4, 2, 1, p.roadEdge);
@@ -304,55 +361,66 @@ export function renderCity({
         }
       }
     }
-  // Stable plot IDs keep existing contributions in place as the town grows.
-  for (const plot of PLOTS) {
-    if (isFootballPlot(plot.id) || isCinemaPlot(plot.id)) continue;
-    const pt = plotCenter(plot);
-    const occupied = byPlot.has(plot.id) || !!venueAt(plot.id);
-    const active = selectedPlot === plot.id;
-    const hover = hoveredPlot === plot.id;
-    if (occupied) {
-      diamond(ctx, pt.x, pt.y, 105, 52.5, night ? '#577468' : '#BFD5A4');
-      // A short footpath connects the front of the lawn to the street.
-      for (let step = 0; step < 5; step++) {
-        const stone = project(plot.x + 0.5, plot.y + 1.02 + step * 0.25);
-        diamond(ctx, stone.x, stone.y, 7, 3.5, night ? '#899483' : '#E3DABF');
+    // Stable plot IDs keep existing contributions in place as the town grows.
+    for (const plot of PLOTS) {
+      if (isFootballPlot(plot.id) || isCinemaPlot(plot.id) || isZooPlot(plot.id)) continue;
+      const pt = plotCenter(plot);
+      if (!visible(pt, 110, 60, 60)) continue;
+      const occupied = byPlot.has(plot.id) || !!venueAt(plot.id);
+      const active = selectedPlot === plot.id;
+      const hover = hoveredPlot === plot.id;
+      if (occupied) {
+        diamond(ctx, pt.x, pt.y, 105, 52.5, night ? '#577468' : '#BFD5A4');
+        // A short footpath connects the front of the lawn to the street.
+        for (let step = 0; step < 5; step++) {
+          const stone = project(plot.x + 0.5, plot.y + 1.02 + step * 0.25);
+          diamond(ctx, stone.x, stone.y, 7, 3.5, night ? '#899483' : '#E3DABF');
+        }
+      }
+      if (!occupied) drawMeadow(ctx, plot, night);
+      if (active || hover) diamond(ctx, pt.x, pt.y, 108, 54, night ? '#B5C59B40' : '#F4EDCD80');
+      if (!occupied) {
+        const corners = [
+          [pt.x, pt.y - 49],
+          [pt.x + 98, pt.y],
+          [pt.x, pt.y + 49],
+          [pt.x - 98, pt.y],
+        ];
+        ctx.save();
+        ctx.setLineDash([4, 5]);
+        ctx.strokeStyle = active || hover ? p.ink : night ? '#ABC6B850' : '#69885A55';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+        if (showPlots || hover || active) {
+          ctx.fillStyle = p.ink;
+          ctx.font = '10px "Space Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(plot.id, pt.x, pt.y + 4);
+        } else {
+          rect(ctx, pt.x - 3, pt.y, 6, 1, night ? '#ABC6B870' : '#69885A70');
+          rect(ctx, pt.x, pt.y - 3, 1, 6, night ? '#ABC6B870' : '#69885A70');
+        }
       }
     }
-    if (!occupied) drawMeadow(ctx, plot, night);
-    if (active || hover) diamond(ctx, pt.x, pt.y, 108, 54, night ? '#B5C59B40' : '#F4EDCD80');
-    if (!occupied) {
-      const corners = [
-        [pt.x, pt.y - 49],
-        [pt.x + 98, pt.y],
-        [pt.x, pt.y + 49],
-        [pt.x - 98, pt.y],
-      ];
-      ctx.save();
-      ctx.setLineDash([4, 5]);
-      ctx.strokeStyle = active || hover ? p.ink : night ? '#ABC6B850' : '#69885A55';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
-      if (showPlots || hover || active) {
-        ctx.fillStyle = p.ink;
-        ctx.font = '10px "Space Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(plot.id, pt.x, pt.y + 4);
-      } else {
-        rect(ctx, pt.x - 3, pt.y, 6, 1, night ? '#ABC6B870' : '#69885A70');
-        rect(ctx, pt.x, pt.y - 3, 1, 6, night ? '#ABC6B870' : '#69885A70');
-      }
-    }
-  }
+  });
   const objects = drawFootball(
     ctx,
     football,
     night,
     isFootballPlot(selectedPlot ?? '') || isFootballPlot(hoveredPlot ?? ''),
+  );
+  objects.push(
+    ...drawZoo(
+      ctx,
+      minutes,
+      night,
+      isZooPlot(selectedPlot ?? '') || isZooPlot(hoveredPlot ?? ''),
+      day,
+    ),
   );
   // Rugs are floor paint: they must never be drawn over seated guests.
   objects.push(
@@ -365,7 +433,7 @@ export function renderCity({
     ),
   );
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const point = plotCenter(plot);
     drawVenue(
@@ -379,37 +447,12 @@ export function renderCity({
       'ground',
     );
   }
-  for (let x = 0; x < WORLD_WIDTH; x++)
-    for (let y = 0; y < WORLD_HEIGHT; y++) {
-      const seed = hash(`tree${x},${y}`);
-      const pt = project(x + 0.5, y + 0.5);
-      if (
-        (x === 0 || y === 0 || y >= WORLD_HEIGHT - 2 || (x === WORLD_WIDTH - 1 && y >= 9)) &&
-        seed % 3 !== 0
-      ) {
-        objects.push({
-          depth: x + y,
-          paint: () => tree(ctx, pt.x + (seed % 15) - 7, pt.y, 1 + (seed % 5) * 0.12, p, seed),
-        });
-      }
-      if (
-        x < ROAD_MAX_X &&
-        y < ROAD_MAX_Y &&
-        !isRoad(x, y) &&
-        !insideFootball({ x, y }) &&
-        !insideCinema({ x, y }) &&
-        !PLOTS.some(
-          (plot) => venueAt(plot.id) && Math.abs(plot.x - x) <= 1 && Math.abs(plot.y - y) <= 1,
-        ) &&
-        x % BLOCK_SIZE === 0 &&
-        y % BLOCK_SIZE === 2 &&
-        seed % 2
-      ) {
-        objects.push({ depth: x + y, paint: () => tree(ctx, pt.x, pt.y, 0.65, p, seed) });
-      }
-    }
+  for (const { point, depth, scale, seed } of trees) {
+    if (!visible(point, 38, 80, 18)) continue;
+    objects.push({ depth, paint: () => tree(ctx, point.x, point.y, scale, p, seed) });
+  }
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const pt = plotCenter(plot);
     objects.push({
@@ -433,6 +476,7 @@ export function renderCity({
   }
   for (const { x, y } of STREETLIGHTS) {
     const pt = project(x + 0.5, y + 0.5);
+    if (!visible(pt, 26, 57, 2)) continue;
     objects.push({
       depth: x + y,
       paint: () => {
@@ -503,6 +547,14 @@ export function cityHit(
   const plot = PLOTS.find((plot) => plot.id === plotId);
   let depth = plot ? houseDepth(plot) : -Infinity;
   let target: CityHit | undefined = plot ? { kind: 'place', id: plot.id } : undefined;
+  const hitsZooSign = zooSignHit(point);
+  if (insideZoo(unproject(point.x, point.y)) || hitsZooSign) {
+    const zooDepth = hitsZooSign ? ZOO_SIGN_DEPTH : -1;
+    if (zooDepth >= depth) {
+      depth = zooDepth;
+      target = { kind: 'place', id: ZOO_VENUE.plot };
+    }
+  }
   const board = project(15.5, 22.2);
   const hitsBoard =
     point.x >= board.x - 92 &&
@@ -514,7 +566,7 @@ export function cityHit(
     target = { kind: 'place', id: FOOTBALL_VENUE.plot };
   }
   for (const venue of VENUES) {
-    if (venue.kind === 'cinema') continue;
+    if (venue.kind === 'cinema' || venue.kind === 'zoo') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const p = plotCenter(plot),
       bounds = venueBounds(venue);

@@ -1,5 +1,6 @@
 import { isEventLive, type TownEvent, type Venue } from '../lib/events';
 import { project } from '../lib/world';
+import { drawVenueTitle } from './venue-title';
 
 export const venueBounds = (venue: Venue) => ({
   left: venue.kind === 'stage' ? -44 : -84,
@@ -53,12 +54,6 @@ export function drawVenue(
     ctx.restore();
     return;
   }
-  const label = (text: string, y: number, color: string) => {
-    ctx.font = 'bold 9px "Space Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = color;
-    ctx.fillText(text, 0, y);
-  };
   if (venue.kind === 'stage') {
     // Pull the platform to the rear of its plot, leaving a real audience lawn.
     // This matches the walkable spots in events.ts: platform local y ends at 0.2.
@@ -106,8 +101,15 @@ export function drawVenue(
       ],
       night ? '#365653' : '#557E72',
     );
-    rect(-43, -54, 86, 16, '#304F48');
-    label(party ? 'MIDNIGHT DISCO' : 'THE LITTLE STAGE', -43, '#F5E8BD');
+    drawVenueTitle(ctx, {
+      x: 0,
+      y: -59,
+      width: 120,
+      height: 24,
+      title: party ? 'Midnight Disco' : venue.name,
+      fontSize: 12,
+      night,
+    });
     for (let i = 0; i < 7; i++)
       rect(
         -57 + i * 19,

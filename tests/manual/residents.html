@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Forktown resident figures</title>
+    <style>
+      body {
+        margin: 24px;
+        font: 15px system-ui;
+        background: #f8f6ee;
+        color: #304c40;
+      }
+      label,
+      button {
+        margin-right: 18px;
+      }
+      canvas {
+        display: block;
+        max-width: 100%;
+        margin-top: 20px;
+        background: #dfe7cf;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Resident figures</h1>
+    <p>Male and female figures in all four directions, with shared poses and accessories.</p>
+    <label
+      >Accessory
+      <select id="accessory">
+        <option>none</option>
+        <option>hat</option>
+        <option>glasses</option>
+      </select></label
+    >
+    <label>Skin <input id="skin" type="color" value="#D9B68B" /></label>
+    <label>Hair <input id="hair" type="color" value="#675A48" /></label>
+    <button id="play">Pause animation</button>
+    <canvas width="1440" height="1120" aria-label="Male and female figure comparison"></canvas>
+    <script type="module">
+      import { drawResident } from '/src/city/residents.ts';
+      import { DEFAULT_RESIDENT } from '/src/lib/schema.ts';
+      const canvas = document.querySelector('canvas');
+      const ctx = canvas.getContext('2d');
+      const accessory = document.querySelector('#accessory');
+      const skin = document.querySelector('#skin');
+      const hair = document.querySelector('#hair');
+      let playing = true,
+        phase = 0,
+        previous = 0;
+      document.querySelector('#play').onclick = (event) => {
+        playing = !playing;
+        event.target.textContent = playing ? 'Pause animation' : 'Play animation';
+      };
+      function paint(now) {
+        if (playing) phase = (phase + Math.min(now - previous, 100) / 900) % 1;
+        previous = now;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '16px system-ui';
+        ctx.textAlign = 'center';
+        const columns = ['male', 'female'].flatMap((figure) =>
+          ['se', 'sw', 'ne', 'nw'].map((facing) => ({ figure, facing })),
+        );
+        const poses = [
+          'stand',
+          'walk',
+          'sit',
+          'read',
+          'sip',
+          'chat',
+          'cheer',
+          'dance',
+          'sway',
+          'play',
+          'duckLove',
+        ];
+        columns.forEach(({ figure, facing }, column) => {
+          const x = 135 + column * 170;
+          ctx.fillStyle = '#304c40';
+          ctx.fillText(`${figure} · ${facing}`, x, 25);
+          poses.forEach((pose, row) => {
+            const y = 120 + row * 98;
+            if (column === 0) {
+              ctx.fillStyle = '#304c40';
+              ctx.fillText(pose, 40, y - 20);
+            }
+            drawResident(
+              ctx,
+              {
+                ...DEFAULT_RESIDENT,
+                figure,
+                accessory: accessory.value,
+                skin: skin.value,
+                hair: hair.value,
+              },
+              x,
+              y,
+              2,
+              {
+                facing,
+                moving: pose === 'walk',
+                walkPhase: phase,
+                pose: ['stand', 'walk', 'duckLove'].includes(pose) ? undefined : pose,
+                duckLove: pose === 'duckLove',
+                greeting: false,
+              },
+            );
+          });
+        });
+        requestAnimationFrame(paint);
+      }
+      requestAnimationFrame(paint);
+    </script>
+  </body>
+</html>

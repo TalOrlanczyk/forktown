@@ -1,3 +1,4 @@
+import { isZooPlot, ZOO_FRAME } from '../lib/zoo';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crosshair, Minus, Plus, MapPin } from 'lucide-react';
 import { cityHit, renderCity, type Camera } from '../city/render';
@@ -126,6 +127,22 @@ const City = forwardRef<CityHandle, Props>(function City(
       zoom,
     };
   };
+  const zooCamera = (width: number, height: number): Camera => {
+    const mobile = width < 600;
+    const zoom = Math.max(
+      0.05,
+      Math.min(
+        1.4,
+        (width - (mobile ? 24 : 400)) / ZOO_FRAME.width,
+        (mobile ? height * 0.43 : height - 150) / ZOO_FRAME.height,
+      ),
+    );
+    return {
+      x: (mobile ? width / 2 : (width - 370) / 2) - ZOO_FRAME.center.x * zoom,
+      y: (mobile ? height * 0.29 : height * 0.5) - ZOO_FRAME.center.y * zoom,
+      zoom,
+    };
+  };
   const defaultCamera = useCallback((width: number, height: number): Camera => {
     const zoom = Math.max(
       0.01,
@@ -157,7 +174,7 @@ const City = forwardRef<CityHandle, Props>(function City(
       const overview = defaultCamera(width, height);
       const points = [
         ...initialPlaces.current.map((place) => place.plot),
-        ...VENUES.map((venue) => venue.plot),
+        ...VENUES.filter((venue) => venue.kind !== 'zoo').map((venue) => venue.plot),
       ].flatMap((id) => {
         const plot = getPlot(id);
         return plot ? [plotCenter(plot)] : [];
@@ -198,6 +215,10 @@ const City = forwardRef<CityHandle, Props>(function City(
       reset,
       stopFollowing,
       focus: (id) => {
+        if (isZooPlot(id)) {
+          setCamera(zooCamera(size.width, size.height));
+          return;
+        }
         if (isCinemaPlot(id)) {
           setCamera(cinemaCamera(size.width, size.height));
           return;
@@ -227,7 +248,8 @@ const City = forwardRef<CityHandle, Props>(function City(
       setSize({ width, height });
       const initial = neighborhoodCamera(width, height);
       const selected = getPlot(selectedRef.current ?? '');
-      if (selected && isCinemaPlot(selected.id)) setCamera(cinemaCamera(width, height));
+      if (selected && isZooPlot(selected.id)) setCamera(zooCamera(width, height));
+      else if (selected && isCinemaPlot(selected.id)) setCamera(cinemaCamera(width, height));
       else if (selected && isFootballPlot(selected.id)) setCamera(footballCamera(width, height));
       else if (selected) {
         const point = plotCenter(selected),

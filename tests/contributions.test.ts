@@ -1,3 +1,4 @@
+import { ZOO_PLOTS } from '../src/lib/zoo';
 import { describe, expect, it } from 'vitest';
 import { draftSchema, placeSchema, validatePlaces, type Place } from '../src/lib/schema';
 import {
@@ -79,6 +80,19 @@ describe('The contribution contract', () => {
     const { errors } = validatePlaces([{ file: 'my-file.json', data: sample }]);
     expect(errors[0]).toContain('Rename this file to tiny-library.json');
   });
+  it.each([
+    'con',
+    'prn',
+    'aux',
+    'nul',
+    ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+    ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`),
+  ])('rejects Windows device filenames before they reach any checkout: %s', (id) => {
+    const result = validatePlaces([{ file: `${id}.json`, data: { ...sample, id } }]);
+    expect(result.errors.join(' ')).toContain('reserved on Windows');
+    expect(result.places).toEqual([]);
+    expect(placeSchema.safeParse({ ...sample, id: `${id}-house` }).success).toBe(true);
+  });
   it.each(['../escape', 'a/b', 'Upper-Case', 'two--hyphens', '-start', 'end-', ''])(
     'rejects unsafe or ambiguous ids: %s',
     (id) => {
@@ -128,11 +142,11 @@ describe('The world stays predictable as people contribute', () => {
     expect(shade('#FFFFFF', 30)).toBe('#ffffff');
     expect(shade('#000000', -30)).toBe('#000000');
   });
-  it('has 100 unique plots with public venues, football ground, and cinema reserved', () => {
-    expect(new Set(PLOTS.map((plot) => plot.id)).size).toBe(100);
+  it('has 200 unique plots with public venues, football ground, cinema, and zoo reserved', () => {
+    expect(new Set(PLOTS.map((plot) => plot.id)).size).toBe(200);
     for (const plot of PLOTS)
       expect(placeSchema.safeParse({ ...sample, plot: plot.id }).success).toBe(
-        !['B5', 'C5', ...FOOTBALL_PLOTS, ...CINEMA_PLOTS].includes(plot.id),
+        !['B5', 'C5', ...FOOTBALL_PLOTS, ...CINEMA_PLOTS, ...ZOO_PLOTS].includes(plot.id),
       );
   });
   it('keeps the same coordinates for an existing plot regardless of other places', () => {
