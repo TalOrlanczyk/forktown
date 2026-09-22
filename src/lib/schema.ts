@@ -116,6 +116,10 @@ export const placeSchema = z
       .regex(
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
         'Use lowercase letters, numbers, and single hyphens, e.g. moon-cafe.',
+      )
+      .refine(
+        (id) => !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(id),
+        'This file id is reserved on Windows. Add a word, e.g. con-house or aux-cafe.',
       ),
     name: z
       .string()

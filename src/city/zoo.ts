@@ -20,6 +20,7 @@ export const ZOO_SIGN = {
   height: 34,
   rise: 40,
 };
+export const ZOO_SIGN_DEPTH = ZOO_SIGN.point.x + ZOO_SIGN.point.y + ZOO_SIGN.width / TILE_W;
 export function zooSignHit(point: Point) {
   const gate = project(ZOO_SIGN.point.x, ZOO_SIGN.point.y);
   const x = point.x - gate.x;
@@ -451,7 +452,7 @@ export function drawZoo(
     objects.push({ depth: a.position.x + a.position.y, paint: () => animal(ctx, a, night) });
   objects.push({
     // Sort at the near end so fence posts cannot paint over the lettering.
-    depth: ZOO_SIGN.point.x + ZOO_SIGN.point.y + ZOO_SIGN.width / TILE_W,
+    depth: ZOO_SIGN_DEPTH,
     paint: () => sign(ctx, ZOO_SIGN.point, ZOO_VENUE.name, night),
   });
   if (selected) {

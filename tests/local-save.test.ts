@@ -118,6 +118,9 @@ describe('Save a place to the local checkout', () => {
 
   it.each([
     { ...place, id: '../escape' },
+    { ...place, id: 'con' },
+    { ...place, id: 'aux' },
+    { ...place, id: 'com1' },
     { ...place, building: 'unknown' },
     { ...place, script: 'alert(1)' },
     { ...place, creator: 'FORKTOWN' },

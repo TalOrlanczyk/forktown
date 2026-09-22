@@ -71,6 +71,8 @@ export function alongRoute(route: Point[], progress: number) {
 // Tiles per town minute, with a bounded brisk pace for longer event journeys.
 export const WALK_SPEED = 0.32;
 export const MAX_TRAVEL_SPEED_MULTIPLIER = 1.4;
+// One town minute is one real second: leave time to enjoy the destination.
+export const MIN_VISIT_MINUTES = 15;
 export const routeLength = (route: readonly Point[]) =>
   route
     .slice(1)
@@ -99,8 +101,8 @@ export function planTravel(
   const depart = Math.max(availableFrom, targetArrival - duration);
   const arrive = depart + duration;
   const leave = Math.min(end + stagger, availableUntil - duration);
-  // Keep the same pace going home and skip trips with no time to see the event.
-  if (arrive >= end || leave <= Math.max(start, arrive)) return undefined;
+  // Count only time while the event is open, excluding early arrival and lingering.
+  if (Math.min(end, leave) - Math.max(start, arrive) < MIN_VISIT_MINUTES) return undefined;
   return { route, duration, depart, arrive, leave, homeBy: leave + duration };
 }
 export type TravelPlan = NonNullable<ReturnType<typeof planTravel>>;

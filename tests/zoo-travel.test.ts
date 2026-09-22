@@ -17,6 +17,7 @@ import { cityHit } from '../src/city/render';
 import { ZOO_SIGN, zooSignHit } from '../src/city/zoo';
 import {
   MAX_TRAVEL_SPEED_MULTIPLIER,
+  MIN_VISIT_MINUTES,
   planTravel,
   roadPath,
   routeLength,
@@ -41,6 +42,32 @@ const at = (time: number, places = homes, day = 7) =>
   simulateResidents(places, time % 1440, day + Math.floor(time / 1440));
 
 describe('Willow Grove Zoo and physical journey times', () => {
+  it('skips brief visits, including time lost to the return journey or event closing', () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 80.4, y: 0 },
+    ];
+    // Evergreen's old zoo trip: ~179.5 minutes each way, only ~1 second on site.
+    expect(planTravel(route, 840, 1020, 720, 1080, 720)).toBeUndefined();
+    const doorstep = [{ x: 0, y: 0 }];
+    expect(planTravel(doorstep, 840, 1020, 1006, 1080, 720, 10)).toBeUndefined();
+    expect(planTravel(doorstep, 840, 1020, 1005, 1080, 720)?.arrive).toBe(1005);
+    expect(planTravel(doorstep, 840, 1020, 720, 854, 720)).toBeUndefined();
+    expect(planTravel(doorstep, 840, 1020, 720, 855, 720)?.leave).toBe(855);
+  });
+  it('gives every planned visit at least fifteen minutes while the event is open', () => {
+    const town = HOUSE_PLOTS.map((plot, i) => ({
+      ...homes[i % homes.length],
+      id: `visit-${i}`,
+      plot: plot.id,
+    }));
+    for (let day = 0; day < 8; day++)
+      for (const trips of residentTrips(town, day).values())
+        for (const trip of trips)
+          expect(
+            Math.min(trip.event.end, trip.leave) - Math.max(trip.event.start, trip.arrive),
+          ).toBeGreaterThanOrEqual(MIN_VISIT_MINUTES - 1e-8);
+  });
   it('reserves 24 plots starting at O, with four animal species and two empty habitats', () => {
     expect(ZOO_PLOTS).toHaveLength(24);
     expect(ZOO_PLOTS[0]).toBe('O4');

@@ -80,6 +80,19 @@ describe('The contribution contract', () => {
     const { errors } = validatePlaces([{ file: 'my-file.json', data: sample }]);
     expect(errors[0]).toContain('Rename this file to tiny-library.json');
   });
+  it.each([
+    'con',
+    'prn',
+    'aux',
+    'nul',
+    ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+    ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`),
+  ])('rejects Windows device filenames before they reach any checkout: %s', (id) => {
+    const result = validatePlaces([{ file: `${id}.json`, data: { ...sample, id } }]);
+    expect(result.errors.join(' ')).toContain('reserved on Windows');
+    expect(result.places).toEqual([]);
+    expect(placeSchema.safeParse({ ...sample, id: `${id}-house` }).success).toBe(true);
+  });
   it.each(['../escape', 'a/b', 'Upper-Case', 'two--hyphens', '-start', 'end-', ''])(
     'rejects unsafe or ambiguous ids: %s',
     (id) => {

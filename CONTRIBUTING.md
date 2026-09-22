@@ -40,16 +40,16 @@ Copy `examples/my-little-place.json` to `places/your-unique-id.json`. Do not cha
 
 `A1` is an example. Check that your chosen plot is still open before submitting.
 
-| Field        | What to put here                                                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. |
-| `name`       | A place name, 3–32 characters. International characters are welcome.                                                               |
-| `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                            |
-| `plot`       | An unoccupied plot shown in the town map (currently rows A�E, columns 1�10).                                                       |
-| `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                           |
-| `color`      | A six-digit hex color, such as `#789B76`.                                                                                          |
-| `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                          |
-| `story`      | A personal description of 10–180 characters.                                                                                       |
+| Field        | What to put here                                                                                                                                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. Windows device names (`con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`) are reserved; add a word, such as `aux-cafe`. |
+| `name`       | A place name, 3–32 characters. International characters are welcome.                                                                                                                                                                                             |
+| `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                                                                                                                                                          |
+| `plot`       | An unoccupied plot shown in the town map (currently rows A�E, columns 1�10).                                                                                                                                                                                     |
+| `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                                                                                                                                                         |
+| `color`      | A six-digit hex color, such as `#789B76`.                                                                                                                                                                                                                        |
+| `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                                                                                                                                                        |
+| `story`      | A personal description of 10–180 characters.                                                                                                                                                                                                                     |
 
 Add only your own place file. There is no shared list to edit. Plot positions remain fixed as the town grows.
 

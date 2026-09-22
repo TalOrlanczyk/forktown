@@ -56,7 +56,9 @@ Up to eight night strollers can attend the Little Stage's 23:30–02:30 party, w
 
 Residents derive facing from their current route segment: southeast, southwest, northeast, or northwest. Front and back artwork is mirrored for left/right travel, with matching hats, glasses, hair, and limb layering. A distance-based walk phase drives alternating foot lifts, arm swing, and a small torso bob; resting residents have no gait animation. The ground shadow and greeting text are not mirrored or bounced.
 
-Path and sign caches are bounded. The current 100-plot world does not require a game engine or worker. Before expanding to large districts, profile rendering, path allocation, and the pairwise greeting check.
+Path and sign caches are bounded. The 200-plot world precomputes terrain seeds and tree geometry, skips offscreen ground and scenery, and caches the static ground in one viewport-sized canvas per map. Camera, viewport, lighting, plot occupancy, selection, labels, and font changes invalidate that layer; residents and venues keep animating above it. The ground cache is capped at 16 megapixels, with direct rendering for larger canvases. Before expanding to larger districts, profile rendering, path allocation, and the pairwise greeting check.
+
+Every planned event visit must include at least fifteen town minutes while the event is open, after accounting for both journeys. Trips that cannot provide that time are skipped, leaving the resident free for their normal routine. This same minimum applies to the cinema-to-disco handoff.
 
 ## Where to extend it
 

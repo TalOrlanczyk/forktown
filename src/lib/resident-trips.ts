@@ -11,6 +11,7 @@ import {
   roadPath,
   routeLength,
   WALK_SPEED,
+  MIN_VISIT_MINUTES,
   type TravelPlan,
 } from './walking';
 import { nightBedtime } from './night-routine';
@@ -180,7 +181,7 @@ export function residentTrips(places: Place[], day: number): Map<string, Residen
         const depart = previous.leave;
         const arrive = depart + duration;
         const leave = Math.min(end, window.availableUntil - returnDuration);
-        if (leave - Math.max(event.start, arrive) >= 15) {
+        if (leave - Math.max(event.start, arrive) >= MIN_VISIT_MINUTES) {
           previous.homeBy = depart;
           previous.continuesTo = event.id;
           trips.push({

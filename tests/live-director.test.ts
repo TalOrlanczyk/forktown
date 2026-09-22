@@ -134,7 +134,13 @@ describe('Live broadcast director', () => {
 
   it('follows people between highlights and holds the full selected football match', () => {
     expect(shotAt(12, 420).kind).toBe('neighbor');
-    expect(shotAt(12, 1000).kind).toBe('neighbor');
+    const afterAfternoon =
+      Math.max(
+        ...eventsForDay(12)
+          .filter((event) => event.period === 'afternoon')
+          .map((event) => event.end),
+      ) + 5;
+    expect(shotAt(12, afterAfternoon).kind).toBe('neighbor');
     const day = Array.from({ length: 30 }, (_, day) => day).find((day) =>
       liveHighlights(day).includes('football'),
     )!;
