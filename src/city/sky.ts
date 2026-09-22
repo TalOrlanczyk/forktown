@@ -20,9 +20,9 @@ export function drawSky(
   const sky = townSkyAt(day, minutes);
   ctx.save();
   const wash = ctx.createLinearGradient(0, 0, 0, height);
-  wash.addColorStop(0, blend([29, 49, 53], [224, 234, 221], sky.daylight));
-  wash.addColorStop(0.65, blend([47, 68, 65], [241, 240, 218], sky.daylight));
-  wash.addColorStop(1, blend([54, 73, 67], [233, 237, 218], sky.daylight));
+  wash.addColorStop(0, blend([29, 49, 53], [205, 219, 204], sky.daylight));
+  wash.addColorStop(0.65, blend([47, 68, 65], [220, 224, 202], sky.daylight));
+  wash.addColorStop(1, blend([54, 73, 67], [211, 222, 201], sky.daylight));
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, width, height);
   for (const star of stars) {
