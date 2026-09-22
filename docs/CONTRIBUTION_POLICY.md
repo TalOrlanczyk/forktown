@@ -7,6 +7,7 @@ The required `Contribution policy` status inspects PR files through GitHub's API
 - Each PR adds at most one house filename. Renames count; deletions do not offset additions. Code/docs PRs can add zero houses.
 - New-house creator credit matches the PR author, ignoring case. Each house has one resident. New starter credit is prohibited.
 - You can edit your own house without changing its credit. Deletion, renaming, changing another person's house, or changing credit needs a different maintainer's approval of the current commit.
+- The repository owner, with current admin permission, can edit existing project starter houses credited to `forktown` without another review. This exception only covers modifications that keep the same filename and starter credit. It does not cover community houses, deletions, renames, new houses, or credit changes. Repository ownership comes from the trusted workflow context, not PR contents.
 - Collaborative credit and account renames use that reviewed exception. Approval never exempts the allowance or schema validation.
 - Outside app/automation changes also need maintainer approval, since they can alter validation. Trusted maintainers can submit normal code changes without self-review.
 - Approvals must match the current head and come from someone with current write/maintain/admin permission. New pushes, dismissed approvals, and later changes requests invalidate the approval.
