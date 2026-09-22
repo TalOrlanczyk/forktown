@@ -1,0 +1,40 @@
+{
+  "id": "vaxsius-markus",
+  "name": "Vaxsius Markus",
+  "creator": "amashi",
+  "plot": "A3",
+  "building": "observatory",
+  "color": "#759BAF",
+  "decoration": "tree",
+  "story": "The house was full and yet empty",
+  "design": {
+    "wall": "#F0E5C8",
+    "trim": "#846C56",
+    "floors": 2,
+    "roof": "flat",
+    "windows": "round",
+    "garden": "paving",
+    "feature": "none"
+  },
+  "resident": {
+    "name": "Droply",
+    "skin": "#D9B68B",
+    "hair": "#fffc41",
+    "outfit": "#5e30eb",
+    "accessory": "none",
+    "greeting": "Hello!",
+    "routine": {
+      "morning": "work",
+      "afternoon": "stroll",
+      "evening": "home",
+      "night": "sleep"
+    }
+  },
+  "sign": {
+    "mode": "text",
+    "text": "?",
+    "color": "#FFF4D4",
+    "background": "#00c7fc",
+    "html": ""
+  }
+}
