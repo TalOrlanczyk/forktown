@@ -40,6 +40,12 @@ const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 const at = (time: number, places = homes, day = 7) =>
   simulateResidents(places, time % 1440, day + Math.floor(time / 1440));
+const zooPlans = residentTrips(homes, 7);
+const zooVisits = homes.flatMap((home) =>
+  (zooPlans.get(home.id) ?? [])
+    .filter((trip) => trip.event.id === 'zoo')
+    .map((trip) => ({ home, trip })),
+);
 
 describe('Willow Grove Zoo and physical journey times', () => {
   it('skips brief visits, including time lost to the return journey or event closing', () => {
@@ -167,16 +173,15 @@ describe('Willow Grove Zoo and physical journey times', () => {
     expect(late.duration).toBeCloseTo(100 / 1.4);
   });
 
-  it('walks from the far side of town to the zoo and home at a constant speed without shortcuts', () => {
-    const plans = residentTrips(homes, 7);
-    const visits = homes.flatMap((home) =>
-      (plans.get(home.id) ?? [])
-        .filter((p) => p.event.id === 'zoo')
-        .map((trip) => ({ home, trip })),
-    );
-    expect(visits.length).toBeGreaterThan(0);
-    expect(visits.some(({ trip }) => trip.depart < trip.event.depart)).toBe(true);
-    for (const { home, trip } of visits) {
+  it('plans zoo visits from the far side of town, including early departures', () => {
+    expect(zooVisits.length).toBeGreaterThan(0);
+    expect(zooVisits.some(({ trip }) => trip.depart < trip.event.depart)).toBe(true);
+  });
+
+  // Each complete journey gets its own timeout budget, even on slower CI runners.
+  it.each(zooVisits)(
+    'walks $home.id from $home.plot to the zoo and home at a constant speed without shortcuts',
+    ({ home, trip }) => {
       const speed = routeLength(trip.route) / trip.duration;
       expect(speed).toBeGreaterThanOrEqual(WALK_SPEED);
       expect(speed).toBeLessThanOrEqual(WALK_SPEED * MAX_TRAVEL_SPEED_MULTIPLIER + 1e-8);
@@ -219,8 +224,8 @@ describe('Willow Grove Zoo and physical journey times', () => {
         expect(
           distance(stateAt(boundary - 0.001).position, stateAt(boundary + 0.001).position),
         ).toBeLessThan(0.002);
-    }
-  });
+    },
+  );
 
   it('respects work commitments and cannot double-book a resident or teleport at midnight', () => {
     const workers = homes.map((h) => ({
