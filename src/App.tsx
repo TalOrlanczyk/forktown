@@ -11,8 +11,6 @@ import {
   Compass,
   ExternalLink,
   Music2,
-  Pause,
-  Play,
   Plus,
   Search,
   Share2,
@@ -36,6 +34,7 @@ import Modal from './components/Modal';
 import TownEvents from './components/TownEvents';
 import Soundtrack from './components/Soundtrack';
 import FootballMatch from './components/FootballMatch';
+import CalendarClock from './components/CalendarClock';
 import CinemaInfo from './components/CinemaInfo';
 import { CINEMA_VENUE, isCinemaPlot } from './lib/cinema';
 import { footballAt, isFootballPlot, FOOTBALL_VENUE } from './lib/football';
@@ -278,16 +277,7 @@ export default function App() {
           </span>
           forktown<span className="brand-dot">.</span>
         </button>
-        <div className="map-clock" title="UTC-synced · One real minute is one town hour">
-          <span className={clock.playing ? 'live-dot' : 'paused-dot'} />
-          <time>{timeLabel(clock.minutes)}</time>
-          <button
-            aria-label={clock.playing ? 'Pause town' : 'Return to live town'}
-            onClick={() => clock.setPlaying(!clock.playing)}
-          >
-            {clock.playing ? <Pause size={14} /> : <Play size={14} />}
-          </button>
-        </div>
+        <CalendarClock clock={clock} />
         <button className="way-in" onClick={() => setModal('guide')}>
           Find your way in <ArrowRight size={16} />
         </button>
