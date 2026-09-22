@@ -15,8 +15,67 @@ import { placeSchema } from '../src/lib/schema';
 import { roadPath, simulateResidents } from '../src/lib/simulation';
 import { cityHit } from '../src/city/render';
 import { footballSoundsBetween, renderFootballSound } from '../src/music/football-sound';
+import { townDayAt, townMinutesAt, TOWN_DAY_MS, UTC_DAY_MS } from '../src/lib/town-time';
 
 const sample = placeSchema.parse(JSON.parse(readFileSync('places/my-little-place.json', 'utf8')));
+const gameAtUtc = (timestamp: number) => footballAt(townMinutesAt(timestamp), townDayAt(timestamp));
+const townDaysPerUtcDay = UTC_DAY_MS / TOWN_DAY_MS;
+
+describe('Football shared by UTC date and time', () => {
+  const midnight = Date.parse('2026-09-22T00:00:00Z');
+
+  it('gives viewers in different timezones the same complete match state', () => {
+    const utc = Date.parse('2026-09-22T00:07:34.250Z');
+    const game = gameAtUtc(utc);
+    expect(game.live).toBe(true);
+    expect(game.elapsed).toBe(94.25);
+    expect(gameAtUtc(Date.parse('2026-09-22T03:07:34.250+03:00'))).toEqual(game);
+    expect(gameAtUtc(Date.parse('2026-09-21T17:07:34.250-07:00'))).toEqual(game);
+  });
+
+  it('replays the complete daily lineup in all sixty town cycles', () => {
+    for (let match = 0; match < 6; match++) {
+      for (const elapsed of [0, 2.25, 8.5, 9.5, 60, 68, 94.25, 128, 139.99]) {
+        const timestamp = midnight + (360 + match * 140 + elapsed) * 1000;
+        const first = gameAtUtc(timestamp);
+        for (let cycle = 1; cycle < townDaysPerUtcDay; cycle++) {
+          const replay = gameAtUtc(timestamp + cycle * TOWN_DAY_MS);
+          expect(replay.day).toBe(first.day + cycle);
+          expect({ ...replay, day: first.day }).toEqual(first);
+        }
+      }
+    }
+  });
+
+  it('refreshes the lineup at UTC midnight and varies fixtures within a date', () => {
+    const lineup = (date: number) =>
+      Array.from({ length: 6 }, (_, match) => {
+        const { score, saves, sounds } = gameAtUtc(date + (360 + match * 140 + 128) * 1000);
+        return { score, saves, sounds };
+      });
+    const today = lineup(midnight);
+    expect(new Set(today.map((match) => JSON.stringify(match))).size).toBeGreaterThan(1);
+    expect(lineup(midnight + UTC_DAY_MS)).not.toEqual(today);
+    const before = gameAtUtc(midnight + UTC_DAY_MS - 1);
+    const after = gameAtUtc(midnight + UTC_DAY_MS);
+    expect(before.live).toBe(false);
+    expect(after.live).toBe(false);
+    expect(after.day).toBe(before.day + 1);
+    expect(after.score).toEqual([0, 0]);
+  });
+
+  it('can join, reload, or resume directly at any frame without replaying earlier frames', () => {
+    const timestamp = midnight + 454_250;
+    const expected = gameAtUtc(timestamp);
+    for (const offset of [123_000, -60_000, UTC_DAY_MS, -UTC_DAY_MS, 0]) {
+      gameAtUtc(timestamp + offset);
+      expect(gameAtUtc(timestamp)).toEqual(expected);
+    }
+    const previousCycle = gameAtUtc(timestamp - TOWN_DAY_MS - 10);
+    expect(footballSoundsBetween(previousCycle, expected)).toEqual([]);
+  });
+});
+
 describe('The Meadow Ground', () => {
   it('reserves all six plots and removes only their internal roads and lamps', () => {
     expect(FOOTBALL_PLOTS).toEqual(['F3', 'F4', 'F5', 'G3', 'G4', 'G5']);
@@ -67,8 +126,8 @@ describe('The Meadow Ground', () => {
     for (let day = 0; day < 8; day++)
       for (let attack = 0; attack < 10; attack++) {
         const start = 360 + (attack < 5 ? attack * 12 : 68 + (attack - 5) * 12);
-        const before = footballAt(start + 8.99, day),
-          after = footballAt(start + 9, day);
+        const before = footballAt(start + 8.99, day * townDaysPerUtcDay),
+          after = footballAt(start + 9, day * townDaysPerUtcDay);
         const delta = after.score[0] + after.score[1] - before.score[0] - before.score[1];
         expect(delta).toBe(after.goal ? 1 : 0);
         if (after.goal) {
@@ -88,8 +147,8 @@ describe('The Meadow Ground', () => {
   it('moves continuously between passes, shots, possessions, halves, and matches', () => {
     for (let day = 0; day < 3; day++)
       for (let t = 0.25; t < 280; t += 0.25) {
-        const previous = footballAt(360 + t - 0.001, day),
-          next = footballAt(360 + t, day);
+        const previous = footballAt(360 + t - 0.001, day * townDaysPerUtcDay),
+          next = footballAt(360 + t, day * townDaysPerUtcDay);
         expect(
           Math.hypot(next.ball.x - previous.ball.x, next.ball.y - previous.ball.y),
         ).toBeLessThan(0.02);

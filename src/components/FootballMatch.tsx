@@ -60,7 +60,8 @@ export default function FootballMatch({
           <Flag size={16} />
           <span>
             Four a side. Two quick halves. A fresh match every 2 minutes 20 seconds, all day from
-            06:00–20:00.
+            06:00–20:00 town time. Everyone watching live shares the same match. The six-match
+            lineup repeats each town day and changes at midnight UTC.
           </span>
         </p>
         <p>

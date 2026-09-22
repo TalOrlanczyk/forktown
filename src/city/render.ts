@@ -283,7 +283,7 @@ export function renderCity({
   events = [],
   minutes = 0,
   day = 0,
-  football = footballAt(minutes),
+  football = footballAt(minutes, day),
 }: RenderOptions) {
   ctx.clearRect(0, 0, width, height);
   const p = night ? NIGHT : DAY;
