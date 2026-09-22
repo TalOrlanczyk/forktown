@@ -1,4 +1,5 @@
 import { drawZoo, zooSignHit, ZOO_SIGN_DEPTH } from './zoo';
+import { drawSky } from './sky';
 import { drawFarm, drawFarmGround, drawUfo } from './farm';
 import { FARM, insideFarm, isFarmPlot } from '../lib/farm';
 import { insideZoo, isZooPlot, ZOO_VENUE } from '../lib/zoo';
@@ -286,6 +287,7 @@ export function renderCity({
   football = footballAt(minutes, day),
 }: RenderOptions) {
   ctx.clearRect(0, 0, width, height);
+  drawSky(ctx, width, height, day, minutes);
   const p = night ? NIGHT : DAY;
   ctx.save();
   ctx.translate(camera.x, camera.y);

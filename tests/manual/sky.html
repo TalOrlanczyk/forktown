@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forktown · Sky study</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #eef0e3;
+        color: #3b5142;
+        font: 13px system-ui;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 24px;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: calc(100dvh - 120px);
+      }
+      output {
+        display: block;
+        padding: 16px 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Sky study</strong>
+      <label>Town time <input id="time" type="range" min="0" max="1439" value="780" /></label>
+      <label
+        >Moon
+        <select id="phase">
+          <option value="0">New</option>
+          <option value="3">Waxing crescent</option>
+          <option value="7">First quarter</option>
+          <option value="14">Full</option>
+          <option value="21">Last quarter</option>
+          <option value="25">Waning crescent</option>
+        </select>
+      </label>
+      <a href="/">Back to town</a>
+    </header>
+    <canvas aria-label="Sky behind the town overview"></canvas>
+    <output></output>
+    <script type="module">
+      import { renderCity } from '/src/city/render.ts';
+      import { places } from '/src/lib/places.ts';
+      import { WORLD_BOUNDS } from '/src/lib/world.ts';
+      import { CALENDAR_EPOCH_DAY, townCalendarAt } from '/src/lib/town-calendar.ts';
+      import { timeLabel } from '/src/lib/simulation.ts';
+      const canvas = document.querySelector('canvas');
+      const time = document.querySelector('#time');
+      const phase = document.querySelector('#phase');
+      function paint() {
+        const width = canvas.clientWidth,
+          height = canvas.clientHeight;
+        const ratio = Math.min(devicePixelRatio, 2);
+        canvas.width = Math.floor(width * ratio);
+        canvas.height = Math.floor(height * ratio);
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        const minutes = Number(time.value),
+          day = CALENDAR_EPOCH_DAY + Number(phase.value);
+        const zoom = Math.min(
+          (width - 80) / (WORLD_BOUNDS.right - WORLD_BOUNDS.left),
+          (height - 190) / WORLD_BOUNDS.bottom,
+        );
+        renderCity({
+          ctx,
+          width,
+          height,
+          places,
+          minutes,
+          day,
+          camera: {
+            x: width / 2 - ((WORLD_BOUNDS.left + WORLD_BOUNDS.right) / 2) * zoom,
+            y: 165,
+            zoom,
+          },
+          night: minutes < 360 || minutes >= 1200,
+          selectedPlot: null,
+          hoveredPlot: null,
+          showPlots: false,
+        });
+        const calendar = townCalendarAt(day, minutes);
+        document.querySelector('output').textContent =
+          `${calendar.label} · ${timeLabel(minutes)} · ${calendar.moonName} · ${Math.round(calendar.illumination * 100)}% illuminated`;
+      }
+      time.addEventListener('input', paint);
+      phase.addEventListener('change', paint);
+      new ResizeObserver(paint).observe(canvas);
+      paint();
+    </script>
+  </body>
+</html>

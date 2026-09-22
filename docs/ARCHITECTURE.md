@@ -44,6 +44,8 @@ The endpoint accepts loopback connections with a matching local Origin and a per
 
 ### A deliberately small simulation
 
+The sky is painted before all world geometry, outside the camera transform and terrain cache. `town-calendar.ts` derives a permanent fictional calendar and continuous lunar cycle from the shared town-day index, anchored at 2026-09-20 00:00 UTC. Dates, sun/moon positions, and illumination are pure functions of the clock; no per-visitor state or random initialization is involved. See [Sky and calendar](SKY_AND_CALENDAR.md) for the 28-day seasons, lunar model, and almanac interface.
+
 `simulation.ts` is a pure function of reviewed places and town minutes. BFS paths connect road tile centers. Each resident uses a stable id-based loop that starts and ends at their doorstep; whole walking loops plus short rests fit within the current period. This ensures residents are home when their activity changes. A different path can overlap another resident's path; there is no collision avoidance or traffic model.
 
 Event journeys use the route's physical length and the event's usual departure time. Residents increase their walking pace only as needed, up to 1.4 times the normal speed, to reach their staggered arrival target before the event starts. If that pace is still insufficient, they leave earlier when their routine and previous trip allow it. Busy residents may arrive late; trips with no time left to attend are skipped. The return walk uses the same pace and must finish before the next unavailable period.
