@@ -1,3 +1,4 @@
+import { ZOO_FRAME } from './zoo';
 import type { Camera } from '../city/render';
 import { eventsForDay, isEventLive, type TownEvent } from './events';
 import { ducksAt } from './ducks';
@@ -143,6 +144,8 @@ export function liveShotAt(
             r.activity === 'stroll' && r.event?.id === event.id && r.event.phase === 'attending',
         )),
   );
+  if (event?.venue.kind === 'zoo')
+    return { id: `event:${program.day}:zoo`, kind: 'event', label: event.name, ...ZOO_FRAME };
   if (event) {
     const point = plotCenter(getPlot(event.venue.plot)!);
     return {

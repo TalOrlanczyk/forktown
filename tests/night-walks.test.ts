@@ -1,3 +1,4 @@
+import { residentTrips } from '../src/lib/resident-trips';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { placeSchema, type Place } from '../src/lib/schema';
@@ -25,11 +26,18 @@ const at = (minutes: number, homes = owls) =>
 const party = eventsForDay(8).find((event) => event.period === 'night')!;
 const guestIds = new Set(
   at(1500)
-    .filter((state) => state.event)
+    .filter((state) => state.event?.id === 'night-party')
     .map((state) => state.id),
 );
 const movieGuests = new Set(cinemaGuests(owls, 8));
-const overflow = owls.filter((home) => !guestIds.has(home.id) && !movieGuests.has(home.id));
+const overflow = owls.filter(
+  (home) =>
+    !guestIds.has(home.id) &&
+    !movieGuests.has(home.id) &&
+    !residentTrips(owls, 8)
+      .get(home.id)
+      ?.some((p) => p.homeBy > 1320),
+);
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -106,28 +114,29 @@ describe('Night owls and the midnight party', () => {
     expect(
       new Set(
         at(2940)
-          .filter((state) => state.event)
+          .filter((state) => state.event?.id === 'night-party')
           .map((state) => state.id),
       ),
     ).not.toEqual(guestIds);
   });
-  it('walks guests along roads and the venue lawn, then sleeps at home by 04:30', () => {
-    for (let minute = party.depart; minute < party.homeBy; minute += 2.7) {
-      const now = at(minute),
-        next = at(minute + 0.001);
-      now.forEach((state, index) => {
-        if (!guestIds.has(state.id)) return;
+  it('walks guests along roads and the venue lawn, then sleeps after their own return time', () => {
+    for (const id of guestIds) {
+      const trip = residentTrips(owls, 8)
+        .get(id)!
+        .find((p) => p.event.id === 'night-party')!;
+      for (let minute = trip.depart; minute < trip.homeBy; minute += 2.7) {
+        const state = at(minute).find((r) => r.id === id)!,
+          next = at(minute + 0.001).find((r) => r.id === id)!;
         expect(
           isRoad(Math.floor(state.position.x), Math.floor(state.position.y)) ||
             insideVenue(party.venue, state.position),
         ).toBe(true);
-        expect(distance(state.position, next[index].position)).toBeLessThan(0.01);
+        expect(distance(state.position, next.position)).toBeLessThan(0.01);
         if (state.event?.phase !== 'attending') expect(state.pose).toBeUndefined();
         expect(state.greeting).toBe(false);
-      });
-    }
-    for (const minute of [1320, party.depart - 0.001, party.homeBy, 1799.999])
-      for (const state of at(minute).filter((state) => guestIds.has(state.id))) {
+      }
+      for (const minute of [trip.homeBy + 0.001, 1799.999]) {
+        const state = at(minute).find((r) => r.id === id)!;
         expect(state).toMatchObject({
           activity: 'sleep',
           moving: false,
@@ -136,6 +145,7 @@ describe('Night owls and the midnight party', () => {
         expect(state.event).toBeUndefined();
         expect(state.pose).toBeUndefined();
       }
+    }
   });
   it('never teleports at event boundaries or moonlit departures and returns', () => {
     const boundaries = [party.depart, party.start, 1440, party.end, party.homeBy, 1800];
