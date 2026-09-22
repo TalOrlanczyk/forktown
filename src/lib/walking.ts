@@ -68,8 +68,9 @@ export function alongRoute(route: Point[], progress: number) {
   return { position: route.at(-1)!, moving: false, facing: 'ne' as const, walkPhase: 0 };
 }
 
-// Tiles per town minute. A distant home changes the journey time, never this speed.
+// Tiles per town minute, with a bounded brisk pace for longer event journeys.
 export const WALK_SPEED = 0.32;
+export const MAX_TRAVEL_SPEED_MULTIPLIER = 1.4;
 export const routeLength = (route: readonly Point[]) =>
   route
     .slice(1)
@@ -83,13 +84,22 @@ export function planTravel(
   end: number,
   availableFrom: number,
   availableUntil: number,
+  preferredDepart: number,
   stagger = 0,
 ) {
-  const duration = routeLength(route) / WALK_SPEED;
-  const depart = Math.max(availableFrom, start - 5 - stagger - duration);
+  const normalDuration = routeLength(route) / WALK_SPEED;
+  const targetArrival = start - 5 - stagger;
+  const travelWindow = targetArrival - Math.max(preferredDepart, availableFrom);
+  // Pick up the pace before borrowing time from an earlier free period.
+  const speedMultiplier = Math.min(
+    MAX_TRAVEL_SPEED_MULTIPLIER,
+    Math.max(1, travelWindow > 0 ? normalDuration / travelWindow : MAX_TRAVEL_SPEED_MULTIPLIER),
+  );
+  const duration = normalDuration / speedMultiplier;
+  const depart = Math.max(availableFrom, targetArrival - duration);
   const arrive = depart + duration;
   const leave = Math.min(end + stagger, availableUntil - duration);
-  // No sprinting, teleporting, or trip with no time left to see the event.
+  // Keep the same pace going home and skip trips with no time to see the event.
   if (arrive >= end || leave <= Math.max(start, arrive)) return undefined;
   return { route, duration, depart, arrive, leave, homeBy: leave + duration };
 }

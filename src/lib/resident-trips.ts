@@ -5,13 +5,25 @@ import { EVENT_SPOTS, eventSpot, eventsForDay, type TownEvent, type Venue } from
 import { cinemaGuests, CINEMA_ENTRANCE } from './cinema';
 import { FOOTBALL_ENTRANCE, FOOTBALL_VENUE, spectatorSpot, footballAt } from './football';
 import { zooRoute } from './zoo';
-import { alongRoute, planTravel, roadPath, type TravelPlan } from './walking';
+import {
+  alongRoute,
+  planTravel,
+  roadPath,
+  routeLength,
+  WALK_SPEED,
+  type TravelPlan,
+} from './walking';
+import { nightBedtime } from './night-routine';
 
 type VisitEvent = Omit<TownEvent, 'venue' | 'period'> & {
   venue: Venue | typeof FOOTBALL_VENUE;
   period: 'morning' | 'afternoon' | 'evening' | 'night';
 };
 export type ResidentTrip = TravelPlan & {
+  // Chained visits end at the next departure; their homeBy is the handoff time.
+  continuesTo?: string;
+  returnRoute: Point[];
+  returnDuration: number;
   event: VisitEvent;
   seat: number;
   facing: ResidentState['facing'];
@@ -27,7 +39,21 @@ function availableWindow(home: Place, period: (typeof periods)[number]) {
     last = first;
   while (first > 0 && home.resident.routine[periods[first - 1]] === 'stroll') first--;
   while (last < 3 && home.resident.routine[periods[last + 1]] === 'stroll') last++;
-  return { availableFrom: boundaries[first], availableUntil: boundaries[last + 1] };
+  return {
+    availableFrom: boundaries[first],
+    availableUntil: Math.min(
+      boundaries[last + 1],
+      home.resident.routine.night === 'stroll' ? nightBedtime(home) : 1800,
+    ),
+  };
+}
+
+function venueApproach(venue: Venue, seat: number): Point[] {
+  const audience = eventSpot(venue, seat).position;
+  const entrance = venue.kind === 'cinema' ? CINEMA_ENTRANCE : plotEntrance(getPlot(venue.plot)!);
+  const laneX =
+    venue.kind === 'cinema' ? 28.5 : venue.kind === 'green' ? entrance.x - 1.35 : audience.x;
+  return [entrance, { x: laneX, y: entrance.y }, { x: laneX, y: audience.y }, audience];
 }
 
 export function eventRoute(home: Place, event: VisitEvent, seat: number): Point[] {
@@ -36,25 +62,12 @@ export function eventRoute(home: Place, event: VisitEvent, seat: number): Point[
     const spot = spectatorSpot(seat);
     return [...roadPath(doorstep, FOOTBALL_ENTRANCE), { x: spot.x, y: FOOTBALL_ENTRANCE.y }, spot];
   }
-  const audience = eventSpot(event.venue, seat).position;
   if (event.venue.kind === 'zoo') {
-    const path = zooRoute(audience);
+    const path = zooRoute(eventSpot(event.venue, seat).position);
     return [...roadPath(doorstep, path[0]), ...path.slice(1)];
   }
-  const entrance =
-    event.venue.kind === 'cinema' ? CINEMA_ENTRANCE : plotEntrance(getPlot(event.venue.plot)!);
-  const laneX =
-    event.venue.kind === 'cinema'
-      ? 28.5
-      : event.venue.kind === 'green'
-        ? entrance.x - 1.35
-        : audience.x;
-  return [
-    ...roadPath(doorstep, entrance),
-    { x: laneX, y: entrance.y },
-    { x: laneX, y: audience.y },
-    audience,
-  ];
+  const approach = venueApproach(event.venue, seat);
+  return [...roadPath(doorstep, approach[0]), ...approach.slice(1)];
 }
 
 /** Derive a full day's commitments together so early departures and return walks survive period changes. */
@@ -97,7 +110,7 @@ export function residentTrips(places: Place[], day: number): Map<string, Residen
   );
   add(
     party,
-    sorted('night', `${day}:${party.id}`, movieGuests)
+    sorted('night', `${day}:${party.id}`)
       .slice(0, EVENT_SPOTS.stage.length)
       .map((h) => h.id),
   );
@@ -147,18 +160,60 @@ export function residentTrips(places: Place[], day: number): Map<string, Residen
       (a, b) => a.event.start - b.event.start,
     )) {
       const window = availableWindow(home, period);
-      const previousReturn = trips.at(-1)?.homeBy ?? window.availableFrom;
+      const previous = trips.at(-1);
+      const previousReturn = previous?.homeBy ?? window.availableFrom;
+      const homeRoute = eventRoute(home, event, seat);
+      const returnRoute = [...homeRoute].reverse();
+      const partyVisit = event.id === 'night-party';
+      const end = event.end - (partyVisit ? hash(`last-song:${home.id}`) % 61 : 0);
+      // Cinema guests can walk straight from their seat to the stage after the closing card.
+      if (partyVisit && event.venue.kind === 'stage' && previous?.event.venue.kind === 'cinema') {
+        const exit = venueApproach(previous.event.venue, previous.seat).reverse();
+        const approach = venueApproach(event.venue, seat);
+        const route = [
+          ...exit,
+          ...roadPath(exit.at(-1)!, approach[0]).slice(1),
+          ...approach.slice(1),
+        ];
+        const duration = routeLength(route) / WALK_SPEED;
+        const returnDuration = routeLength(returnRoute) / WALK_SPEED;
+        const depart = previous.leave;
+        const arrive = depart + duration;
+        const leave = Math.min(end, window.availableUntil - returnDuration);
+        if (leave - Math.max(event.start, arrive) >= 15) {
+          previous.homeBy = depart;
+          previous.continuesTo = event.id;
+          trips.push({
+            route,
+            duration,
+            depart,
+            arrive,
+            leave,
+            homeBy: leave + returnDuration,
+            returnRoute,
+            returnDuration,
+            ...window,
+            event,
+            seat,
+            facing: eventSpot(event.venue, seat).facing,
+          });
+          continue;
+        }
+      }
       const travel = planTravel(
-        eventRoute(home, event, seat),
-        event.start,
-        event.end,
+        homeRoute,
+        event.start + (partyVisit ? hash(`party-arrival:${home.id}`) % 61 : 0),
+        end,
         Math.max(window.availableFrom, previousReturn),
         window.availableUntil,
+        event.depart,
         seat * 1.3,
       );
       if (!travel) continue;
       trips.push({
         ...travel,
+        returnRoute,
+        returnDuration: travel.duration,
         ...window,
         event,
         seat,
@@ -183,14 +238,25 @@ export function tripState(
   time: number,
   day: number,
 ): Partial<ResidentState> {
-  const { event, seat, route, duration, depart, arrive, leave, facing } = trip;
+  const {
+    event,
+    seat,
+    route,
+    duration,
+    depart,
+    arrive,
+    leave,
+    facing,
+    returnRoute,
+    returnDuration,
+  } = trip;
   const phase =
     time < Math.max(arrive, event.start) ? 'going' : time < leave ? 'attending' : 'returning';
   const movement =
     phase === 'going'
       ? alongRoute(route, (time - depart) / duration)
       : phase === 'returning'
-        ? alongRoute([...route].reverse(), (time - leave) / duration)
+        ? alongRoute(returnRoute, (time - leave) / returnDuration)
         : { position: route.at(-1)!, moving: false, facing, walkPhase: 0 };
   const beat = Math.floor((time + (hash(home.id) % 19)) / 12);
   const pose =

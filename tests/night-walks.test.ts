@@ -1,6 +1,6 @@
 import { residentTrips } from '../src/lib/resident-trips';
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { placeSchema, type Place } from '../src/lib/schema';
 import {
   eventAtVenue,
@@ -10,8 +10,10 @@ import {
   insideVenue,
 } from '../src/lib/events';
 import { residentActivityLabel, simulateResidents } from '../src/lib/simulation';
-import { getPlot, hash, isRoad, plotEntrance } from '../src/lib/world';
-import { cinemaGuests } from '../src/lib/cinema';
+import { getPlot, isRoad, plotEntrance } from '../src/lib/world';
+import { insideCinema } from '../src/lib/cinema';
+import { nightBedtime } from '../src/lib/night-routine';
+import { MAX_TRAVEL_SPEED_MULTIPLIER, routeLength, WALK_SPEED } from '../src/lib/walking';
 
 const sample = placeSchema.parse(JSON.parse(readFileSync('places/my-little-place.json', 'utf8')));
 const owls: Place[] = HOUSE_PLOTS.slice(0, 32).map((plot, index) => ({
@@ -20,138 +22,184 @@ const owls: Place[] = HOUSE_PLOTS.slice(0, 32).map((plot, index) => ({
   plot: plot.id,
   resident: { ...sample.resident, routine: { ...sample.resident.routine, night: 'stroll' } },
 }));
-// Use an actual day rollover, just like the live town clock.
+const day = 8;
 const at = (minutes: number, homes = owls) =>
-  simulateResidents(homes, minutes % 1440, 8 + Math.floor(minutes / 1440));
-const party = eventsForDay(8).find((event) => event.period === 'night')!;
-const guestIds = new Set(
-  at(1500)
-    .filter((state) => state.event?.id === 'night-party')
-    .map((state) => state.id),
-);
-const movieGuests = new Set(cinemaGuests(owls, 8));
-const overflow = owls.filter(
-  (home) =>
-    !guestIds.has(home.id) &&
-    !movieGuests.has(home.id) &&
-    !residentTrips(owls, 8)
-      .get(home.id)
-      ?.some((p) => p.homeBy > 1320),
-);
+  simulateResidents(homes, minutes % 1440, day + Math.floor(minutes / 1440));
+const party = eventsForDay(day).find((event) => event.id === 'night-party')!;
+const plans = residentTrips(owls, day);
+const overflow = owls.filter((home) => !plans.get(home.id)!.some((trip) => trip.homeBy > 1320));
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
 describe('Night owls and the midnight party', () => {
-  it('defaults existing JSON to sleep and rejects unsupported night choices', () => {
+  it('keeps omitted and explicit sleep choices indoors throughout the night', () => {
     const { night: _night, ...routine } = sample.resident.routine;
     const old = { ...sample, resident: { ...sample.resident, routine } };
     expect(placeSchema.parse(old).resident.routine.night).toBe('sleep');
     expect(
       placeSchema.safeParse({
-        ...sample,
-        resident: { ...sample.resident, routine: { ...routine, night: 'work' } },
+        ...old,
+        resident: { ...old.resident, routine: { ...routine, night: 'work' } },
       }).success,
     ).toBe(false);
-    expect(at(1500, [placeSchema.parse(old)])[0].activity).toBe('sleep');
+    const sleepers = [
+      placeSchema.parse(old),
+      {
+        ...sample,
+        id: 'explicit-sleeper',
+        resident: { ...sample.resident, routine: { ...routine, night: 'sleep' as const } },
+      },
+    ];
+    for (let minute = 1320; minute < 1800; minute += 7.3) {
+      for (const state of at(minute, sleepers)) {
+        expect(state.activity).toBe('sleep');
+        expect(state.moving).toBe(false);
+        expect(state.event).toBeUndefined();
+        expect(state.position).toEqual(plotEntrance(getPlot(state.home.plot)!));
+      }
+    }
   });
-  it('gives overflow neighbors one staggered, local road walk and rest afterward', () => {
+  it('keeps four starter neighbors awake after 22:00 and some outside after 04:00', () => {
+    const homes = readdirSync('places')
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => placeSchema.parse(JSON.parse(readFileSync(`places/${file}`, 'utf8'))));
+    expect(
+      homes
+        .filter((home) => home.creator === 'forktown' && home.resident.routine.night === 'stroll')
+        .map((home) => home.id)
+        .sort(),
+    ).toEqual(['after-hours', 'moonbeam-cafe', 'plot-twist', 'stargazer']);
+    expect(
+      at(1320, homes).filter(
+        (state) => state.home.creator === 'forktown' && state.activity === 'stroll',
+      ),
+    ).toHaveLength(4);
+    expect(
+      at(1680, homes).filter(
+        (state) => state.home.creator === 'forktown' && state.activity === 'stroll',
+      ).length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(at(1740, homes).every((state) => state.activity === 'sleep')).toBe(true);
+  });
+  it('fills free nights with local walks and doorstep breaks until varied bedtimes', () => {
     expect(overflow.length).toBeGreaterThan(0);
-    const departures = new Set<number>();
+    const bedtimes = new Set<number>();
     for (const home of overflow) {
-      const departure = hash(`night:${home.id}`) % 240;
-      departures.add(departure);
-      const doorstep = plotEntrance(getPlot(home.plot)!);
-      for (let minute = 0; minute < 480; minute += 2.5) {
-        const state = at(1320 + minute).find((state) => state.id === home.id)!;
-        const walking = minute >= departure && minute < departure + 180;
-        expect(state.activity).toBe(walking ? 'stroll' : 'sleep');
+      const bedtime = nightBedtime(home),
+        doorstep = plotEntrance(getPlot(home.plot)!);
+      bedtimes.add(bedtime);
+      expect(bedtime).toBeGreaterThanOrEqual(1440);
+      expect(bedtime).toBeLessThanOrEqual(1740);
+      let walked = false,
+        rested = false;
+      for (let minute = 1320; minute < 1800; minute += 2.5) {
+        const state = at(minute).find((state) => state.id === home.id)!;
+        expect(state.activity).toBe(minute < bedtime ? 'stroll' : 'sleep');
         expect(state.event).toBeUndefined();
         expect(isRoad(Math.floor(state.position.x), Math.floor(state.position.y))).toBe(true);
-        if (walking) {
+        if (state.nightWalk) {
+          walked = true;
+          expect(state.moving).toBe(true);
           expect(residentActivityLabel(state)).toBe('Out for a moonlit stroll');
           expect(
             Math.abs(state.position.x - doorstep.x) + Math.abs(state.position.y - doorstep.y),
-            // A road detour can extend beyond the destination's eight-tile radius.
           ).toBeLessThanOrEqual(12.001);
         } else {
           expect(state.position).toEqual(doorstep);
           expect(state.moving).toBe(false);
-          expect(state.greeting).toBe(false);
+          if (minute < bedtime) {
+            rested = true;
+            expect(state.nightPorch).toBe(true);
+            expect(residentActivityLabel(state)).toBe('Enjoying the night on the doorstep');
+          }
         }
       }
+      expect(walked && rested).toBe(true);
     }
-    expect(departures.size).toBeGreaterThan(3);
+    expect(bedtimes.size).toBeGreaterThan(3);
   });
-  it('keeps the same eight dancers in distinct spots on both sides of midnight', () => {
+  it('keeps attendance bounded, seats unique, and the itinerary stable across midnight', () => {
+    const invited = [...plans.values()].flat().filter((trip) => trip.event.id === 'night-party');
+    expect(invited.length).toBeGreaterThan(0);
+    expect(invited.length).toBeLessThanOrEqual(8);
+    expect(new Set(invited.map((trip) => trip.seat)).size).toBe(invited.length);
+    expect(new Set(invited.map((trip) => trip.depart)).size).toBeGreaterThan(1);
+    expect(new Set(invited.map((trip) => trip.leave)).size).toBeGreaterThan(1);
     const before = at(1439.999),
       after = at(1440.001);
-    expect(guestIds.size).toBe(8);
-    expect(
-      new Set(
-        after
-          .filter((state) => state.event?.id === 'night-party')
-          .map((state) => JSON.stringify(state.position)),
-      ).size,
-    ).toBe(8);
     before.forEach((state, index) => {
-      expect(distance(state.position, after[index].position)).toBeLessThan(
-        state.event?.id === 'cinema' ? 0.01 : 0.001,
-      );
+      expect(distance(state.position, after[index].position)).toBeLessThan(0.01);
       expect(state.event).toEqual(after[index].event);
     });
-    for (const state of after.filter((state) => state.event?.id === 'night-party')) {
-      expect(state).toMatchObject({
-        activity: 'stroll',
-        moving: false,
-        pose: 'dance',
-        event: { id: 'night-party', phase: 'attending' },
+    for (const minute of [1430, 1500, 1570]) {
+      const dancers = at(minute).filter(
+        (state) => state.event?.id === 'night-party' && state.event.phase === 'attending',
+      );
+      expect(new Set(dancers.map((state) => JSON.stringify(state.position))).size).toBe(
+        dancers.length,
+      );
+      dancers.forEach((state) => {
+        expect(state).toMatchObject({ activity: 'stroll', moving: false, pose: 'dance' });
+        expect(insideVenue(party.venue, state.position)).toBe(true);
+        expect(residentActivityLabel(state)).toBe(`Dancing at ${party.name}`);
       });
-      expect(residentActivityLabel(state)).toBe(`Dancing at ${party.name}`);
-      expect(insideVenue(party.venue, state.position)).toBe(true);
-      expect(state.nightWalk).toBeUndefined();
     }
     expect(at(1500)).toEqual(at(1500, [...owls].reverse()).reverse());
-    expect(
-      new Set(
-        at(2940)
-          .filter((state) => state.event?.id === 'night-party')
-          .map((state) => state.id),
-      ),
-    ).not.toEqual(guestIds);
+    at(1700);
+    expect(at(1500)).toEqual(at(1500, structuredClone(owls)));
   });
-  it('walks guests along roads and the venue lawn, then sleeps after their own return time', () => {
-    for (const id of guestIds) {
-      const trip = residentTrips(owls, 8)
-        .get(id)!
-        .find((p) => p.event.id === 'night-party')!;
-      for (let minute = trip.depart; minute < trip.homeBy; minute += 2.7) {
-        const state = at(minute).find((r) => r.id === id)!,
-          next = at(minute + 0.001).find((r) => r.id === id)!;
+  it('walks directly from cinema to disco, then returns to the actual home', () => {
+    let transfers = 0;
+    for (const home of owls) {
+      const trips = plans.get(home.id)!;
+      for (const [index, cinema] of trips.entries()) {
+        if (!cinema.continuesTo) continue;
+        transfers++;
+        const next = trips[index + 1];
+        expect(cinema.event.id).toBe('cinema');
+        expect(next.event.id).toBe('night-party');
+        expect(next.depart).toBe(cinema.leave);
+        expect(cinema.homeBy).toBe(next.depart);
+        expect(next.route[0]).toEqual(cinema.route.at(-1));
+        expect(next.arrive).toBeGreaterThan(next.depart);
+        expect(next.leave - next.arrive).toBeGreaterThanOrEqual(15);
+        expect(next.returnRoute.at(-1)).toEqual(plotEntrance(getPlot(home.plot)!));
+        expect(routeLength(next.route) / next.duration).toBeCloseTo(WALK_SPEED);
+        expect(routeLength(next.returnRoute) / next.returnDuration).toBeCloseTo(WALK_SPEED);
+        for (let minute = next.depart; minute < next.homeBy; minute += 1.7) {
+          const state = at(minute).find((state) => state.id === home.id)!;
+          expect(state.event?.id).toBe('night-party');
+          expect(
+            isRoad(Math.floor(state.position.x), Math.floor(state.position.y)) ||
+              insideCinema(state.position) ||
+              insideVenue(party.venue, state.position),
+          ).toBe(true);
+        }
         expect(
-          isRoad(Math.floor(state.position.x), Math.floor(state.position.y)) ||
-            insideVenue(party.venue, state.position),
-        ).toBe(true);
-        expect(distance(state.position, next.position)).toBeLessThan(0.01);
-        if (state.event?.phase !== 'attending') expect(state.pose).toBeUndefined();
-        expect(state.greeting).toBe(false);
+          distance(
+            at(next.homeBy).find((state) => state.id === home.id)!.position,
+            plotEntrance(getPlot(home.plot)!),
+          ),
+        ).toBeLessThan(0.001);
       }
-      for (const minute of [trip.homeBy + 0.001, 1799.999]) {
-        const state = at(minute).find((r) => r.id === id)!;
-        expect(state).toMatchObject({
-          activity: 'sleep',
-          moving: false,
-          position: plotEntrance(getPlot(state.home.plot)!),
-        });
-        expect(state.event).toBeUndefined();
-        expect(state.pose).toBeUndefined();
-      }
+      trips.forEach((trip, index) => {
+        expect(trip.homeBy).toBeLessThanOrEqual(nightBedtime(home));
+        if (index) expect(trip.depart).toBeGreaterThanOrEqual(trips[index - 1].homeBy);
+      });
     }
+    expect(transfers).toBeGreaterThan(0);
   });
-  it('never teleports at event boundaries or moonlit departures and returns', () => {
-    const boundaries = [party.depart, party.start, 1440, party.end, party.homeBy, 1800];
-    for (const home of overflow) {
-      const departure = 1320 + (hash(`night:${home.id}`) % 240);
-      boundaries.push(departure, departure + 180);
+  it('never jumps between outings, doorstep rests, midnight, bedtime, or sunrise', () => {
+    const boundaries = new Set([1320, 1440, 1800]);
+    for (const home of owls) {
+      boundaries.add(nightBedtime(home));
+      plans
+        .get(home.id)!
+        .forEach((trip) =>
+          [trip.depart, trip.arrive, trip.leave, trip.homeBy].forEach((time) =>
+            boundaries.add(time),
+          ),
+        );
     }
     for (const boundary of boundaries) {
       const before = at(boundary - 0.001),
@@ -160,15 +208,18 @@ describe('Night owls and the midnight party', () => {
         expect(distance(state.position, after[index].position)).toBeLessThan(0.01),
       );
     }
-  });
-  it('keeps sleepers indoors and selects the right stage program across midnight', () => {
-    const sleeper = { ...sample, id: 'sleeping-neighbor' };
-    for (const minute of [1350, 1410, 1440, 1500, 1600, 1710]) {
-      const state = at(minute, [...owls, sleeper]).at(-1)!;
-      expect(state.activity).toBe('sleep');
-      expect(state.event).toBeUndefined();
-      expect(state.moving).toBe(false);
+    let previous = at(1320);
+    for (let minute = 1320.5; minute < 1800; minute += 0.5) {
+      const states = at(minute);
+      states.forEach((state, index) =>
+        expect(distance(state.position, previous[index].position)).toBeLessThanOrEqual(
+          WALK_SPEED * MAX_TRAVEL_SPEED_MULTIPLIER * 0.5 + 0.001,
+        ),
+      );
+      previous = states;
     }
+  });
+  it('selects the right stage program across midnight', () => {
     expect(eventStatus(party, 1409.999)).toBe('Later tonight');
     for (const minute of [1410, 1439.999, 0, 149.999]) {
       expect(eventStatus(party, minute)).toBe('Happening now');

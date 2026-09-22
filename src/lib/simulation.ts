@@ -2,8 +2,9 @@ import type { Place } from './schema';
 import { duckAwareWalk } from './duck-reactions';
 import { getPlot, hash, plotEntrance, type Point } from './world';
 import type { EventPose } from './events';
-import { alongRoute, roadNodes, roadPath, facingAlong, WALK_SPEED } from './walking';
+import { roadNodes, roadPath, facingAlong, WALK_SPEED } from './walking';
 import { residentTrips, tripState } from './resident-trips';
+import { nightBedtime, nightLeisure } from './night-routine';
 export { roadPath, facingAlong } from './walking';
 
 export type ResidentState = {
@@ -18,6 +19,7 @@ export type ResidentState = {
   greeting: boolean;
   duckLove?: boolean;
   nightWalk?: boolean;
+  nightPorch?: boolean;
   pose?: EventPose;
   event?: { name: string; id: string; phase: 'going' | 'attending' | 'returning' };
 };
@@ -62,6 +64,7 @@ export function residentActivityLabel(state: ResidentState): string {
         ? 'Walking home from the event'
         : `${state.pose === 'dance' ? 'Dancing' : state.pose === 'read' ? 'Reading' : state.pose === 'sip' ? 'Sipping lemonade' : state.pose === 'chat' ? 'Chatting' : state.pose === 'play' ? 'Playing' : state.pose === 'cheer' ? 'Cheering' : state.pose === 'sway' ? 'Swaying' : 'Relaxing'} at ${state.event.name}`;
   if (state.nightWalk) return 'Out for a moonlit stroll';
+  if (state.nightPorch) return 'Enjoying the night on the doorstep';
   return {
     stroll: 'Out for a stroll',
     work: 'Working at home',
@@ -99,35 +102,29 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
           ...tripState(home, trip, tripTime, day),
         },
       ];
-    const nightGuest = trips.some((trip) => trip.homeBy > 1320);
-    // One quiet, local walk, with departures spread from 22:00 to 02:00.
-    // Anchor to the evening across midnight; a new UTC town day must not teleport walkers.
-    const nightTime = (time - 1320 + 1440) % 1440;
-    const nightDeparture = hash(`night:${home.id}`) % 240;
-    const nightWalk =
+    const awakeAtNight =
       period === 'night' &&
-      !nightGuest &&
       home.resident.routine.night === 'stroll' &&
-      nightTime >= nightDeparture &&
-      nightTime < nightDeparture + 180;
-    const activity =
-      period === 'night' ? (nightWalk ? 'stroll' : 'sleep') : home.resident.routine[period];
+      tripTime < nightBedtime(home);
+    if (awakeAtNight) {
+      return [
+        {
+          id: home.id,
+          resident: home.resident,
+          home,
+          activity: 'stroll',
+          greeting: false,
+          ...nightLeisure(home, tripTime, trips),
+        },
+      ];
+    }
+    const activity = period === 'night' ? 'sleep' : home.resident.routine[period];
     let position = doorstep,
       moving = false;
     let facing: ResidentState['facing'] = 'se',
       walkPhase = 0;
     let duckLove: boolean | undefined;
-    if (nightWalk) {
-      const nearby = roadNodes.filter((point) => {
-        const distance = Math.abs(point.x - doorstep.x) + Math.abs(point.y - doorstep.y);
-        return distance >= 4 && distance <= 8;
-      });
-      const destination = nearby[hash(`moon:${home.id}`) % nearby.length] ?? doorstep;
-      const outward = roadPath(doorstep, destination);
-      const route = [...outward, ...outward.slice(0, -1).reverse()];
-      const movement = alongRoute(route, (nightTime - nightDeparture) / 180);
-      ({ position, moving, facing, walkPhase } = movement);
-    } else if (activity === 'stroll') {
+    if (activity === 'stroll') {
       // Fill only the free time between commitments, always returning to the doorstep.
       const freeStart = Math.max(
         start,
@@ -202,7 +199,6 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
         walkPhase,
         greeting: false,
         ...(duckLove ? { duckLove: true } : {}),
-        ...(nightWalk ? { nightWalk: true } : {}),
       },
     ];
   });

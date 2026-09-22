@@ -15,7 +15,13 @@ import {
 } from '../src/lib/zoo';
 import { cityHit } from '../src/city/render';
 import { ZOO_SIGN, zooSignHit } from '../src/city/zoo';
-import { planTravel, roadPath, WALK_SPEED } from '../src/lib/walking';
+import {
+  MAX_TRAVEL_SPEED_MULTIPLIER,
+  planTravel,
+  roadPath,
+  routeLength,
+  WALK_SPEED,
+} from '../src/lib/walking';
 import { residentTrips } from '../src/lib/resident-trips';
 import { residentActivityLabel, simulateResidents } from '../src/lib/simulation';
 
@@ -89,7 +95,7 @@ describe('Willow Grove Zoo and physical journey times', () => {
     expect(zooAnimalsAt(900)).not.toEqual(zooAnimalsAt(910));
   });
 
-  it('leaves earlier for a longer route, arrives late when busy, and skips an impossible visit', () => {
+  it('increases speed before leaving early, arrives late when busy, and skips impossible visits', () => {
     const short = [
       { x: 0, y: 0 },
       { x: 10, y: 0 },
@@ -98,18 +104,40 @@ describe('Willow Grove Zoo and physical journey times', () => {
       { x: 0, y: 0 },
       { x: 80, y: 0 },
     ];
-    const near = planTravel(short, 840, 1020, 360, 1320)!;
-    const far = planTravel(long, 840, 1020, 360, 1320)!;
+    const near = planTravel(short, 840, 1020, 360, 1320, 720)!;
+    const medium = planTravel([short[0], { x: 44.8, y: 0 }], 840, 1020, 360, 1320, 720)!;
+    expect(near.duration).toBeCloseTo(10 / WALK_SPEED);
+    expect(near.depart).toBeGreaterThan(720);
+    expect(medium.depart).toBeCloseTo(720);
+    expect(medium.arrive).toBeCloseTo(835);
+    expect(44.8 / medium.duration / WALK_SPEED).toBeCloseTo(140 / 115);
+    const far = planTravel(long, 840, 1020, 360, 1320, 720)!;
     expect(far.depart).toBeLessThan(720);
     expect(near.arrive).toBe(835);
     expect(far.arrive).toBe(835);
-    expect(near.depart - far.depart).toBeCloseTo(70 / WALK_SPEED);
-    const late = planTravel(long, 840, 1020, 720, 1320)!;
+    expect(far.duration).toBeCloseTo(80 / (WALK_SPEED * 1.4));
+    expect(far.depart).toBeGreaterThan(835 - 80 / WALK_SPEED);
+    const late = planTravel(long, 840, 1020, 720, 1320, 720)!;
     expect(late.depart).toBe(720);
-    expect(late.arrive).toBe(970);
-    expect(late.homeBy - late.leave).toBe(late.duration);
-    expect(planTravel(long, 840, 1020, 780, 1320)).toBeUndefined();
-    expect(planTravel(long, 840, 1020, 720, 1080)).toBeUndefined();
+    expect(late.arrive).toBeCloseTo(720 + 250 / 1.4);
+    expect(late.homeBy - late.leave).toBeCloseTo(late.duration);
+    expect(planTravel(long, 840, 1020, 990, 1320, 720)).toBeUndefined();
+    expect(planTravel(long, 840, 1020, 720, 1060, 720)).toBeUndefined();
+  });
+
+  it('accounts for busy time and stagger when choosing a bounded pace', () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 32, y: 0 },
+    ];
+    const trip = planTravel(route, 840, 1020, 750, 1150, 720, 10)!;
+    expect(trip.depart).toBeCloseTo(750);
+    expect(trip.arrive).toBeCloseTo(825);
+    expect(trip.duration).toBeCloseTo(75);
+    expect(trip.homeBy).toBeCloseTo(1105);
+    const late = planTravel(route, 840, 1020, 850, 1150, 720)!;
+    expect(late.depart).toBe(850);
+    expect(late.duration).toBeCloseTo(100 / 1.4);
   });
 
   it('walks from the far side of town to the zoo and home at a constant speed without shortcuts', () => {
@@ -120,8 +148,11 @@ describe('Willow Grove Zoo and physical journey times', () => {
         .map((trip) => ({ home, trip })),
     );
     expect(visits.length).toBeGreaterThan(0);
-    expect(visits.some(({ trip }) => trip.depart < 720 && trip.duration > 180)).toBe(true);
+    expect(visits.some(({ trip }) => trip.depart < trip.event.depart)).toBe(true);
     for (const { home, trip } of visits) {
+      const speed = routeLength(trip.route) / trip.duration;
+      expect(speed).toBeGreaterThanOrEqual(WALK_SPEED);
+      expect(speed).toBeLessThanOrEqual(WALK_SPEED * MAX_TRAVEL_SPEED_MULTIPLIER + 1e-8);
       const stateAt = (time: number) => at(time).find((r) => r.id === home.id)!;
       expect(
         distance(stateAt(trip.depart).position, plotEntrance(getPlot(home.plot)!)),
@@ -139,10 +170,10 @@ describe('Willow Grove Zoo and physical journey times', () => {
         ).toBe(true);
         expect(insideZooHabitat(now.position)).toBe(false);
         expect(distance(now.position, next.position)).toBeLessThanOrEqual(
-          WALK_SPEED * 0.001 + 1e-8,
+          WALK_SPEED * MAX_TRAVEL_SPEED_MULTIPLIER * 0.001 + 1e-8,
         );
         if (now.moving && next.moving && now.facing === next.facing)
-          expect(distance(now.position, next.position) / 0.001).toBeCloseTo(WALK_SPEED, 6);
+          expect(distance(now.position, next.position) / 0.001).toBeCloseTo(speed, 6);
       }
       expect(
         distance(stateAt(trip.homeBy).position, plotEntrance(getPlot(home.plot)!)),

@@ -4,7 +4,7 @@ import { placeSchema, validatePlaces } from '../src/lib/schema';
 import { compileSign, SIGN_EXAMPLE } from '../src/lib/sign';
 import { periodAt, roadPath, simulateResidents, timeLabel } from '../src/lib/simulation';
 import { getPlot, isRoad, plotEntrance, project, ROAD_MAX_X, ROAD_MAX_Y } from '../src/lib/world';
-import { eventsForDay, insideVenue } from '../src/lib/events';
+import { eventsForDay, HOUSE_PLOTS, insideVenue } from '../src/lib/events';
 import { insideFootball } from '../src/lib/football';
 
 const places = readdirSync('places')
@@ -158,9 +158,24 @@ describe('A small predictable daily life', () => {
     ).toBe(false);
   });
   it('greets nearby walkers without naming a meeting partner', () => {
+    // Include enough local strollers to keep walkers outside the event guest lists.
+    const neighbors = HOUSE_PLOTS.slice(0, 24).map((plot, index) => ({
+      ...sample,
+      id: `greeting-${index}`,
+      plot: plot.id,
+      resident: {
+        ...sample.resident,
+        routine: {
+          morning: 'stroll' as const,
+          afternoon: 'stroll' as const,
+          evening: 'stroll' as const,
+          night: 'sleep' as const,
+        },
+      },
+    }));
     let found = false;
     for (let minute = 360; minute < 1320; minute++) {
-      const states = simulateResidents(places, minute);
+      const states = simulateResidents(neighbors, minute);
       for (const resident of states.filter((state) => state.greeting)) {
         found = true;
         expect(resident.activity).toBe('stroll');

@@ -197,7 +197,8 @@ export function NeighborDetails({
           </select>
         </label>
         <small>
-          Night owls can join the midnight party or take a moonlit stroll, then head home to sleep.
+          Night owls can follow the movies with dancing, take moonlit walks, and relax on their
+          doorstep. Each has a bedtime between midnight and 05:00.
         </small>
       </div>
     </div>

@@ -149,7 +149,7 @@ export function cinemaAt(minutes: number, day = 0) {
   };
 }
 
-/** Half the night owls choose cinema; the rest can join the disco or take their usual walk. */
+/** Half the eligible night owls choose cinema; they can join the disco afterward if time permits. */
 export function cinemaGuests<
   T extends { id: string; resident: { routine: { evening: string; night: string } } },
 >(homes: readonly T[], day: number): string[] {

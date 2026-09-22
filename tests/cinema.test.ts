@@ -1,4 +1,5 @@
 import { residentTrips } from '../src/lib/resident-trips';
+import { nightBedtime } from '../src/lib/night-routine';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -128,7 +129,7 @@ describe('Starlight Cinema', () => {
     expect(new Set(CINEMA_SEATS.map((p) => JSON.stringify(p))).size).toBe(12);
     for (const seat of CINEMA_SEATS) expect(insideCinema(seat)).toBe(true);
   });
-  it('walks a bounded audience in and home continuously, without sending them to two venues', () => {
+  it('walks a bounded audience continuously, then goes home or continues to the disco', () => {
     const day = 8,
       guests = cinemaGuests(crowd, day),
       event = cinemaEventForDay(day);
@@ -172,9 +173,14 @@ describe('Starlight Cinema', () => {
         ).toBeLessThan(0.01);
       }
       const r = at(trip.homeBy + 0.001).find((r) => r.id === id)!;
-      expect(r.activity).toBe('sleep');
-      expect(r.event).toBeUndefined();
-      expect(r.position).toEqual(plotEntrance(getPlot(r.home.plot)!));
+      if (trip.continuesTo) {
+        expect(r.event?.id).toBe('night-party');
+        expect(distance(r.position, trip.route.at(-1)!)).toBeLessThan(0.01);
+      } else {
+        expect(r.activity).toBe(trip.homeBy >= nightBedtime(r.home) ? 'sleep' : 'stroll');
+        expect(r.event).toBeUndefined();
+        expect(r.position).toEqual(plotEntrance(getPlot(r.home.plot)!));
+      }
     }
     const sleepers = crowd.map((p) => ({
       ...p,
