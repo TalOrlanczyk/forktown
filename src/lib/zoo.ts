@@ -1,7 +1,7 @@
 import { ZOO_SITE } from './town-config.ts';
 import { BLOCK_SIZE, PLOTS, project, hash, type Point } from './world.ts';
 
-export const ZOO_VENUE = { id: 'zoo', plot: 'O6', name: 'The Faraway Zoo', kind: 'zoo' } as const;
+export const ZOO_VENUE = { id: 'zoo', plot: 'O6', name: 'Willow Grove Zoo', kind: 'zoo' } as const;
 export const ZOO_PLOTS = PLOTS.filter(
   (plot) =>
     plot.row >= ZOO_SITE.row &&

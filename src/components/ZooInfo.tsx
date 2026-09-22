@@ -8,9 +8,9 @@ export default function ZooInfo({ minutes, watching }: { minutes: number; watchi
         <span className="eyebrow">
           {minutes >= 840 && minutes < 1020
             ? 'AN AFTERNOON WITH THE ANIMALS'
-            : 'A LITTLE FURTHER, A LITTLE WILDER'}
+            : 'A WILD LITTLE CORNER OF TOWN'}
         </span>
-        <h3>Welcome to the Faraway Zoo.</h3>
+        <h3>Welcome to Willow Grove Zoo.</h3>
         <p>
           Four animal habitats, shady paths, and room to grow. Meet the animals each town day from
           14:00–17:00.

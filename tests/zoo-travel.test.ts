@@ -33,7 +33,7 @@ const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
 const at = (time: number, places = homes, day = 7) =>
   simulateResidents(places, time % 1440, day + Math.floor(time / 1440));
 
-describe('Faraway Zoo and physical journey times', () => {
+describe('Willow Grove Zoo and physical journey times', () => {
   it('reserves 24 plots starting at O, with four animal species and two empty habitats', () => {
     expect(ZOO_PLOTS).toHaveLength(24);
     expect(ZOO_PLOTS[0]).toBe('O4');

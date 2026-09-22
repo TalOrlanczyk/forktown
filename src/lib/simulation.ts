@@ -39,10 +39,10 @@ export function residentActivityLabel(state: ResidentState): string {
   if (state.duckLove) return 'Stopped to admire the ducklings';
   if (state.event?.id === 'zoo')
     return state.event.phase === 'going'
-      ? 'Walking to the Faraway Zoo'
+      ? 'Walking to Willow Grove Zoo'
       : state.event.phase === 'returning'
         ? 'Walking home from the zoo'
-        : 'Watching the animals at the Faraway Zoo';
+        : 'Watching the animals at Willow Grove Zoo';
   if (state.event?.id === 'cinema')
     return state.event.phase === 'going'
       ? 'Walking to the Starlight Cinema'

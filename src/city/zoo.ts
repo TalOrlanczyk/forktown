@@ -3,21 +3,23 @@ import {
   ZOO_HABITATS,
   ZOO_CENTER,
   ZOO_ENTRANCE,
+  ZOO_VENUE,
   zooAnimalsAt,
   zooPond,
   zooTree,
 } from '../lib/zoo';
 import { project, type Point } from '../lib/world';
+import { drawVenueTitle } from './venue-title';
 
 type Ctx = CanvasRenderingContext2D;
 type Object = { depth: number; paint: () => void };
 export function zooSignHit(point: Point) {
   const gate = project(ZOO_ENTRANCE.x, ZOO_ENTRANCE.y);
   return (
-    point.x >= gate.x - 110 &&
-    point.x <= gate.x + 110 &&
-    point.y >= gate.y - 48 &&
-    point.y <= gate.y - 15
+    point.x >= gate.x - 135 &&
+    point.x <= gate.x + 135 &&
+    point.y >= gate.y - 72 &&
+    point.y <= gate.y - 12
   );
 }
 function ground(ctx: Ctx, x: number, y: number, w: number, h: number, color: string) {
@@ -69,15 +71,23 @@ function tree(ctx: Ctx, point: Point, night: boolean, acacia = false) {
 }
 function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = false) {
   const p = project(point.x, point.y),
-    width = small ? 108 : 220;
-  box(ctx, p.x - width / 2 + 10, p.y - 25, 4, 25, '#887C61');
-  box(ctx, p.x + width / 2 - 14, p.y - 25, 4, 25, '#887C61');
-  box(ctx, p.x - width / 2, p.y - 48, width, small ? 26 : 33, '#3E6254');
-  box(ctx, p.x - width / 2 + 3, p.y - 45, width - 6, 2, '#B7C68C');
-  ctx.textAlign = 'center';
-  ctx.font = `${small ? '9' : 'bold 15'}px "Space Mono", monospace`;
-  ctx.fillStyle = night ? '#E9DFB9' : '#FBF0CE';
-  ctx.fillText(text, p.x, p.y - (small ? 31 : 26));
+    width = small ? 138 : 270;
+  for (const side of [-1, 1]) {
+    const x = p.x + side * (width / 2 - 15);
+    box(ctx, x - 3, p.y - 30, 6, 30, night ? '#6E7560' : '#927B59');
+    box(ctx, x - 3, p.y - 30, 2, 30, night ? '#919274' : '#B8A078');
+    box(ctx, x - 5, p.y - 2, 10, 3, night ? '#647B68' : '#A5B47F');
+  }
+  drawVenueTitle(ctx, {
+    x: p.x,
+    y: p.y - (small ? 51 : 72),
+    width,
+    height: small ? 34 : 60,
+    title: text,
+    subtitle: small ? undefined : 'A LITTLE WILD, A LOT TO LOVE',
+    fontSize: small ? 13 : 24,
+    night,
+  });
 }
 function animal(ctx: Ctx, a: ReturnType<typeof zooAnimalsAt>[number], night: boolean) {
   const p = project(a.position.x, a.position.y);
@@ -302,7 +312,7 @@ export function drawZoo(
       objects.push({
         depth: point.x + point.y,
         paint: () => {
-          sign(ctx, point, 'FUTURE HABITAT', night, true);
+          sign(ctx, point, 'Future habitat', night, true);
           const p = project(point.x, point.y);
           ctx.font = '9px "Space Mono", monospace';
           ctx.fillStyle = night ? '#BDCEA4' : '#48674D';
@@ -341,7 +351,7 @@ export function drawZoo(
       };
       objects.push({
         depth: point.x + point.y,
-        paint: () => sign(ctx, point, h.name.toUpperCase(), night, true),
+        paint: () => sign(ctx, point, h.name, night, true),
       });
     }
   }
@@ -349,7 +359,7 @@ export function drawZoo(
     objects.push({ depth: a.position.x + a.position.y, paint: () => animal(ctx, a, night) });
   objects.push({
     depth: ZOO_ENTRANCE.x + ZOO_ENTRANCE.y,
-    paint: () => sign(ctx, ZOO_ENTRANCE, 'THE FARAWAY ZOO', night),
+    paint: () => sign(ctx, ZOO_ENTRANCE, ZOO_VENUE.name, night),
   });
   if (selected) {
     ctx.strokeStyle = '#F2E2A1';
