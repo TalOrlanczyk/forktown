@@ -14,21 +14,21 @@ import { drawVenueTitle } from './venue-title';
 type Ctx = CanvasRenderingContext2D;
 type Object = { depth: number; paint: () => void };
 // Inset the entire raised plaque from the street, including its upper corners.
-const entranceSign = {
+export const ZOO_SIGN = {
   point: { x: ZOO_ENTRANCE.x, y: ZOO_GROUND.top + 1.3 },
   width: 170,
   height: 34,
   rise: 40,
 };
 export function zooSignHit(point: Point) {
-  const gate = project(entranceSign.point.x, entranceSign.point.y);
+  const gate = project(ZOO_SIGN.point.x, ZOO_SIGN.point.y);
   const x = point.x - gate.x;
   const y = point.y - gate.y - x * 0.5;
   return (
-    x >= -entranceSign.width / 2 &&
-    x <= entranceSign.width / 2 &&
-    y >= -entranceSign.rise &&
-    y <= -entranceSign.rise + entranceSign.height
+    x >= -ZOO_SIGN.width / 2 &&
+    x <= ZOO_SIGN.width / 2 &&
+    y >= -ZOO_SIGN.rise &&
+    y <= -ZOO_SIGN.rise + ZOO_SIGN.height
   );
 }
 function ground(ctx: Ctx, x: number, y: number, w: number, h: number, color: string) {
@@ -80,7 +80,7 @@ function tree(ctx: Ctx, point: Point, night: boolean, acacia = false) {
 }
 function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = false) {
   const p = project(point.x, point.y),
-    width = small ? 138 : entranceSign.width;
+    width = small ? 138 : ZOO_SIGN.width;
   ctx.save();
   // Follow the north fence's isometric angle instead of spanning the street.
   if (!small) {
@@ -96,9 +96,9 @@ function sign(ctx: Ctx, point: Point, text: string, night: boolean, small = fals
   }
   drawVenueTitle(ctx, {
     x: p.x,
-    y: p.y - (small ? 51 : entranceSign.rise),
+    y: p.y - (small ? 51 : ZOO_SIGN.rise),
     width,
-    height: small ? 34 : entranceSign.height,
+    height: small ? 34 : ZOO_SIGN.height,
     title: text,
     fontSize: small ? 13 : 16,
     night,
@@ -375,8 +375,8 @@ export function drawZoo(
     objects.push({ depth: a.position.x + a.position.y, paint: () => animal(ctx, a, night) });
   objects.push({
     // Sort at the near end so fence posts cannot paint over the lettering.
-    depth: entranceSign.point.x + entranceSign.point.y + entranceSign.width / TILE_W,
-    paint: () => sign(ctx, entranceSign.point, ZOO_VENUE.name, night),
+    depth: ZOO_SIGN.point.x + ZOO_SIGN.point.y + ZOO_SIGN.width / TILE_W,
+    paint: () => sign(ctx, ZOO_SIGN.point, ZOO_VENUE.name, night),
   });
   if (selected) {
     ctx.strokeStyle = '#F2E2A1';

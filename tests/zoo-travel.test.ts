@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { placeSchema, type Place } from '../src/lib/schema';
 import { HOUSE_PLOTS, eventsForDay, insideVenue, venueAt } from '../src/lib/events';
-import { getPlot, isRoad, plotEntrance, project, STREETLIGHTS } from '../src/lib/world';
+import { getPlot, isRoad, plotEntrance, project, unproject, STREETLIGHTS } from '../src/lib/world';
 import {
   ZOO_GROUND,
   ZOO_HABITATS,
@@ -14,6 +14,7 @@ import {
   zooAnimalsAt,
 } from '../src/lib/zoo';
 import { cityHit } from '../src/city/render';
+import { ZOO_SIGN, zooSignHit } from '../src/city/zoo';
 import { planTravel, roadPath, WALK_SPEED } from '../src/lib/walking';
 import { residentTrips } from '../src/lib/resident-trips';
 import { residentActivityLabel, simulateResidents } from '../src/lib/simulation';
@@ -58,8 +59,17 @@ describe('Willow Grove Zoo and physical journey times', () => {
       kind: 'place',
       id: 'O6',
     });
-    const gate = project(ZOO_ENTRANCE.x, ZOO_ENTRANCE.y);
-    expect(cityHit({ x: gate.x, y: gate.y - 30 }, [], [])).toEqual({ kind: 'place', id: 'O6' });
+    const sign = project(ZOO_SIGN.point.x, ZOO_SIGN.point.y);
+    for (const x of [-ZOO_SIGN.width / 2, 0, ZOO_SIGN.width / 2]) {
+      for (const y of [-ZOO_SIGN.rise, -ZOO_SIGN.rise + ZOO_SIGN.height]) {
+        const corner = { x: sign.x + x, y: sign.y + y + x * 0.5 };
+        expect(insideZoo(unproject(corner.x, corner.y))).toBe(true);
+        expect(zooSignHit(corner)).toBe(true);
+        expect(cityHit(corner, [], [])).toEqual({ kind: 'place', id: 'O6' });
+      }
+    }
+    const oldGate = project(ZOO_ENTRANCE.x, ZOO_ENTRANCE.y);
+    expect(zooSignHit({ x: oldGate.x, y: oldGate.y - 30 })).toBe(false);
   });
 
   it('keeps animated animals inside their habitats and every visitor spot outside', () => {
