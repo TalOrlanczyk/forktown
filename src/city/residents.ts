@@ -13,6 +13,7 @@ export function drawResident(
   const facing = state?.facing ?? 'se';
   const back = facing === 'ne' || facing === 'nw';
   const left = facing === 'sw' || facing === 'nw';
+  const female = resident.figure === 'female';
   const seated = !!state?.pose && ['sit', 'read', 'sip', 'chat'].includes(state.pose);
   const cheering = state?.pose === 'cheer';
   const disco = state?.pose === 'dance';
@@ -64,10 +65,24 @@ export function drawResident(
     ctx.fillRect(1 + footSwing, -1 - nearLift, 4, 2);
   }
 
+  // Longer hair sits behind the shoulders; the same limbs and poses serve both figures.
+  if (female) {
+    ctx.fillStyle = tint(resident.hair, -18);
+    ctx.fillRect(-5, -20 + bob, 9, 9);
+    ctx.fillRect(-4, -12 + bob, 8, 2);
+  }
   ctx.fillStyle = resident.outfit;
-  ctx.fillRect(-3, -13 + bob, 7, 9);
+  if (female) {
+    ctx.fillRect(-3, -13 + bob, 7, 3);
+    ctx.fillRect(-2, -10 + bob, 5, 3);
+    ctx.fillRect(-3, -7 + bob, 7, 3);
+  } else ctx.fillRect(-3, -13 + bob, 7, 9);
   ctx.fillStyle = outfitShadow;
-  ctx.fillRect(-3, -12 + bob, 2, 8);
+  if (female) {
+    ctx.fillRect(-3, -12 + bob, 1, 2);
+    ctx.fillRect(-2, -10 + bob, 1, 3);
+    ctx.fillRect(-3, -7 + bob, 1, 3);
+  } else ctx.fillRect(-3, -12 + bob, 2, 8);
   ctx.fillStyle = tint(resident.outfit, 16);
   ctx.fillRect(-1, -13 + bob, 4, 1);
   if (back) {
@@ -108,6 +123,21 @@ export function drawResident(
     ctx.fillRect(3, -18 + bob, 1, 1);
     ctx.fillStyle = tint(resident.skin, -28);
     ctx.fillRect(3, -15 + bob, 1, 1);
+  }
+  if (female) {
+    ctx.fillStyle = resident.hair;
+    if (back) {
+      ctx.fillRect(-4, -20 + bob, 8, 8);
+      ctx.fillRect(-3, -12 + bob, 6, 1);
+      ctx.fillStyle = tint(resident.hair, 18);
+      ctx.fillRect(-3, -20 + bob, 1, 7);
+    } else {
+      ctx.fillRect(-4, -20 + bob, 2, 9);
+      ctx.fillRect(-2, -20 + bob, 3, 1);
+      ctx.fillRect(1, -21 + bob, 3, 1);
+      ctx.fillStyle = tint(resident.hair, 18);
+      ctx.fillRect(-4, -19 + bob, 1, 6);
+    }
   }
   if (resident.accessory === 'hat') {
     ctx.fillStyle = outfitShadow;

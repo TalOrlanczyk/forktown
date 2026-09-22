@@ -18,6 +18,7 @@
   },
   "resident": {
     "name": "Sam",
+    "figure": "female",
     "skin": "#D9B68B",
     "hair": "#675A48",
     "outfit": "#C97878",

@@ -55,10 +55,10 @@ Each pull request may add **at most one new house**, with **one neighbor** in th
 
 ## Make it more personal
 
-The eight basic fields above still work: omitted `design`, `resident`, and `sign` objects get friendly defaults. Use the builder or `examples/living-place.json` when you want to customize them. If you include an object, include all its fields.
+The eight basic fields above still work: omitted `design`, `resident`, and `sign` objects get friendly defaults. Use the builder or `examples/living-place.json` when you want to customize them. If you include an object, include its required fields; `resident.figure` and `resident.routine.night` can be omitted.
 
 - **Home:** `design` sets wall and trim hex colors, 1-3 floors, a `classic` / `flat` / `gable` roof, `cross` / `round` / `shutters` windows, `wildflowers` / `paving` / `vegetables` garden, and an optional `porch` or `balcony` feature (`none` is also valid). The top-level `color` sets the roof color. `classic` uses the building family's original roof.
-- **Neighbor:** `resident` sets a name (2-24 characters), skin/hair/outfit hex colors, `none` / `hat` / `glasses` accessory, and a greeting (1-40 characters).
+- **Neighbor:** `resident` sets a name (2-24 characters), a `male` / `female` figure, skin/hair/outfit hex colors, `none` / `hat` / `glasses` accessory, and a greeting (1-40 characters). Choose **Figure** in the Neighbor tab, or add `"figure": "female"` inside your JSON's `resident` object. Omitted `figure` uses the original male artwork, so existing houses and saved drafts keep their appearance. Both figures support every accessory and daily activity. Update older forks before adding this field: older validators reject it.
 - **Routine:** morning (06:00-12:00), afternoon (12:00-18:00), and evening (18:00-22:00) each choose `stroll`, `work`, or `home`. The last two mean working and relaxing at home. Night (22:00-06:00) chooses `sleep` (the default) or `stroll` (Be a night owl). Up to eight night owls join the Little Stage's 23:30–02:30 party, leaving home after 22:30 and returning by 04:30. Others take one three-hour moonlit walk near home, starting between 22:00 and 02:00, and are back asleep by 05:00. No meetings, destinations, or other residents' names to configure.
 - **Outdoor sign:** choose `none`, `text`, or `html`. Text signs have up to 18 characters plus `color` and `background`. HTML artwork uses the small language described in [sign artwork](docs/SIGN_ARTWORK.md).
 

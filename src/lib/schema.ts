@@ -17,6 +17,7 @@ export const DEFAULT_DESIGN = {
 };
 export const DEFAULT_RESIDENT = {
   name: 'New neighbor',
+  figure: 'male' as const,
   skin: '#D9B68B',
   hair: '#675A48',
   outfit: '#789B76',
@@ -50,6 +51,7 @@ export const designSchema = z
 export const residentSchema = z
   .object({
     name: z.string().trim().min(2, 'Give your resident a name.').max(24),
+    figure: z.enum(['male', 'female']).default('male'),
     skin: color,
     hair: color,
     outfit: color,

@@ -138,6 +138,12 @@ export function NeighborDetails({
         <Color label="Outfit" value={resident.outfit} onChange={(v) => change('outfit', v)} />
       </div>
       <Choice
+        label="Figure"
+        value={resident.figure}
+        options={['male', 'female']}
+        onChange={(v) => change('figure', v)}
+      />
+      <Choice
         label="Accessory"
         value={resident.accessory}
         options={['none', 'hat', 'glasses']}

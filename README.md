@@ -36,7 +36,7 @@ Read the [step-by-step contribution guide](CONTRIBUTING.md). The published GitHu
 - A daily 08:00–12:30 duck walk: a mother and five ducklings leave the river, follow the street beside the Lunch Green to the first houses, turn around, and return to the water. The last duckling briefly dawdles and catches up. Nearby wandering residents stop for four seconds, turn toward the ducks, and show a heart bubble before resuming their walk. The family appears in both town and live views, without needing resident participation.
 - Mouse and touch panning, zoom buttons, scroll zoom, and keyboard map controls.
 - Custom floors, roof shapes, wall and trim colors, window styles, gardens, porches, and balconies.
-- Residents with names, outfits, accessories, greetings, and simple day and night routines.
+- Residents with male and female figures, names, outfits, accessories, greetings, and simple day and night routines. Existing JSON files keep the original figure when `resident.figure` is omitted.
 - Road-following strolls with four directional walking views, distance-based footsteps, occasional neighbor greetings, bedtime, and a camera that follows a resident.
 - Shared daily events: picnics, books, and lawn games at the Lunch Green; rock, acoustic, and jazz evenings at the Little Stage. Strolling neighbors can join a small audience and walk home afterward. Both venues are reserved public plots.
 - A nightly 23:30–02:30 disco at the Little Stage, with a DJ, dancing night owls, steady pastel lights, and an original dance track. Guests walk home by 04:30; sleeping neighbors stay indoors.
