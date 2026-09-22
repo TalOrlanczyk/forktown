@@ -1,5 +1,7 @@
 # Welcome, neighbor
 
+New here? Start with the [visual quick start](README.md): live site → localhost → build → save → pull request, with screenshots and copyable commands.
+
 You don’t need to be an expert to contribute to Forktown. A thoughtful first contribution is a small place with your own name, style, and story.
 
 Want to learn from another house? Choose **Browse house files** in the builder, or select a house in town and click **See the little file behind it**. You can read and copy its actual JSON from `places/`, then return to your draft. After saving locally, **See my saved JSON** opens your new file. Local saves, private previews, and downloads do not publish anything to the shared town; a reviewed and merged pull request is how your house gets there.
