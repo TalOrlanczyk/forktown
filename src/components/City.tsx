@@ -9,7 +9,7 @@ import type { Place } from '../lib/schema';
 import type { ResidentState } from '../lib/simulation';
 import { residentActivityLabel } from '../lib/simulation';
 import { VENUES, venueAt, type TownEvent } from '../lib/events';
-import { CINEMA_FRAME, isCinemaPlot, cinemaAt } from '../lib/cinema';
+import { CINEMA_FRAME, isCinemaPlot, cinemaAt, cinemaListening } from '../lib/cinema';
 import { project, WORLD_BOUNDS } from '../lib/world';
 import {
   FOOTBALL_CENTER,
@@ -37,6 +37,7 @@ type Props = {
   day: number;
   football: FootballState;
   onListening: (listening: { gain: number; pan: number }) => void;
+  onCinemaListening: (listening: { gain: number; pan: number }) => void;
   followed: string | null;
   onStopFollowing: () => void;
   onResidentSelect: (id: string) => void;
@@ -55,6 +56,7 @@ const City = forwardRef<CityHandle, Props>(function City(
     day,
     football,
     onListening,
+    onCinemaListening,
     followed,
     onStopFollowing,
     onResidentSelect,
@@ -93,6 +95,7 @@ const City = forwardRef<CityHandle, Props>(function City(
   cameraRef.current = renderedCamera;
   useEffect(() => {
     onListening(footballListening(renderedCamera, size.width, size.height));
+    onCinemaListening(cinemaListening(renderedCamera, size.width, size.height));
   }, [
     renderedCamera.x,
     renderedCamera.y,
@@ -100,6 +103,7 @@ const City = forwardRef<CityHandle, Props>(function City(
     size.width,
     size.height,
     onListening,
+    onCinemaListening,
   ]);
   const footballCamera = (width: number, height: number): Camera => {
     const pt = project(FOOTBALL_CENTER.x, FOOTBALL_CENTER.y);

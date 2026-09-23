@@ -1,6 +1,6 @@
 import { residentTrips } from '../src/lib/resident-trips';
 import { nightBedtime } from '../src/lib/night-routine';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   CINEMA_FILMS,
@@ -21,6 +21,7 @@ import { isRoad, getPlot, plotEntrance, project } from '../src/lib/world';
 import { liveProgram, liveShotAt, liveCamera, liveHighlights } from '../src/lib/live-director';
 import { cinemaScreenHit, SCREEN_ORIGIN, SCREEN_SCALE } from '../src/city/cinema';
 import { cityHit } from '../src/city/render';
+import { townDayAt, townMinutesAt, TOWN_DAY_MS } from '../src/lib/town-time';
 
 const sample = placeSchema.parse(JSON.parse(readFileSync('places/my-little-place.json', 'utf8')));
 const crowd = HOUSE_PLOTS.slice(0, 32).map((plot, index) => ({
@@ -89,7 +90,53 @@ describe('Starlight Cinema', () => {
     }
     expect(seen.size).toBe(library.length);
     expect(bills.size).toBeGreaterThan(8);
-    expect(cinemaProgram(0).end).toBe(1410);
+    expect(cinemaProgram(0).end).toBe(
+      1230 + 24 + cinemaProgram(0).films.reduce((sum, film) => sum + film.duration, 0),
+    );
+  });
+  it('rotates the six-film library, including the race, sword duel, and UFO, three at a time', () => {
+    expect(CINEMA_FILMS).toHaveLength(6);
+    expect(CINEMA_FILMS.map((film) => film.artwork)).toEqual(
+      expect.arrayContaining(['race', 'duel', 'ufo']),
+    );
+    const firstDay = townDayAt(Date.parse('2026-09-23T00:00:00Z'));
+    const seen = new Set<string>(),
+      selections = new Set<string>();
+    for (let day = firstDay; day < firstDay + 60; day++) {
+      const films = cinemaProgram(day).films;
+      expect(new Set(films.map((film) => film.id)).size).toBe(3);
+      films.forEach((film) => seen.add(film.id));
+      selections.add(
+        films
+          .map((film) => film.id)
+          .sort()
+          .join(','),
+      );
+    }
+    expect(seen.size).toBe(6);
+    expect(selections.size).toBeGreaterThan(8);
+  });
+  it('shares the program and playback position across fresh instances, refreshes, and time zones', async () => {
+    const utc = Date.parse('2026-09-23T00:20:37Z');
+    const first = cinemaAt(townMinutesAt(utc), townDayAt(utc));
+    expect(first.slot?.kind).toBe('film');
+    vi.resetModules();
+    const fresh = await import('../src/lib/cinema');
+    for (const time of [
+      utc,
+      Date.parse('2026-09-23T03:20:37+03:00'),
+      Date.parse('2026-09-22T17:20:37-07:00'),
+    ]) {
+      expect(fresh.cinemaAt(townMinutesAt(time), townDayAt(time))).toEqual(first);
+    }
+    const reloadedAt = utc + 1500;
+    const reloaded = fresh.cinemaAt(townMinutesAt(reloadedAt), townDayAt(reloadedAt));
+    expect(reloaded.program).toEqual(first.program);
+    expect(reloaded.elapsed).toBeCloseTo(first.elapsed + 1.5);
+    const nextNight = utc + TOWN_DAY_MS;
+    expect(fresh.cinemaAt(townMinutesAt(nextNight), townDayAt(nextNight)).program).toEqual(
+      cinemaProgram(first.program.day + 1),
+    );
   });
   it('plays every film at its full duration and switches exactly at each card boundary', () => {
     for (let day = 0; day < 8; day++) {

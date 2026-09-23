@@ -1,4 +1,4 @@
-import { cinemaAt, CINEMA_PLOTS } from '../lib/cinema';
+import { cinemaAt, CINEMA_FILMS, CINEMA_PLOTS } from '../lib/cinema';
 import { timeLabel } from '../lib/simulation';
 
 export default function CinemaInfo({ minutes, day }: { minutes: number; day: number }) {
@@ -24,6 +24,9 @@ export default function CinemaInfo({ minutes, day }: { minutes: number; day: num
           {timeLabel(state.program.start)} and ends at {timeLabel(state.program.end)}.
         </p>
         <p className="muted-copy">Six seconds between films for a little breather.</p>
+        <p className="muted-copy">
+          Turn on town sound and zoom into the screen to hear each film’s music and sound effects.
+        </p>
       </div>
       {movieSlots.map((slot, index) => (
         <div className="venue-program" key={slot.film!.id}>
@@ -35,7 +38,8 @@ export default function CinemaInfo({ minutes, day }: { minutes: number; day: num
         </div>
       ))}
       <p className="muted-copy">
-        A fresh selection each town day. Night owls can take a seat; the screen plays even on quiet
+        Three of {CINEMA_FILMS.length} original films each town night. Everyone shares the same
+        program, even after a refresh. Night owls can take a seat; the screen plays even on quiet
         evenings.
       </p>
     </div>

@@ -1,9 +1,23 @@
 import type { TrackId } from './score';
 import type { Mix } from './render';
+import type { CinemaFilm } from '../lib/cinema';
 
 export function renderTrack(track: TrackId): Promise<AudioBuffer> {
+  return renderAudio(
+    new Worker(new URL('./render-worker.ts', import.meta.url), { type: 'module' }),
+    track,
+  );
+}
+
+export function renderCinemaTrack(film: CinemaFilm): Promise<AudioBuffer> {
+  return renderAudio(
+    new Worker(new URL('./cinema-worker.ts', import.meta.url), { type: 'module' }),
+    film,
+  );
+}
+
+function renderAudio(worker: Worker, input: TrackId | CinemaFilm): Promise<AudioBuffer> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./render-worker.ts', import.meta.url), { type: 'module' });
     const timer = setTimeout(() => {
       worker.terminate();
       reject(new Error('Music took too long to prepare.'));
@@ -36,6 +50,6 @@ export function renderTrack(track: TrackId): Promise<AudioBuffer> {
         reject(error);
       }
     };
-    worker.postMessage(track);
+    worker.postMessage(input);
   });
 }
