@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Forktown · Film Library</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #152a2b;
+        color: #ece2c5;
+        font: 15px system-ui;
+      }
+      main {
+        max-width: 1200px;
+        margin: auto;
+        padding: 28px;
+      }
+      h1 {
+        font: 36px Georgia;
+        margin-bottom: 10px;
+      }
+      p {
+        color: #b5c4b6;
+        line-height: 1.5;
+      }
+      a {
+        color: #e3cf9d;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin: 24px 0;
+      }
+      button {
+        background: #395a50;
+        color: #ece2c5;
+        border: 1px solid #718670;
+        border-radius: 6px;
+        padding: 10px 20px;
+        cursor: pointer;
+      }
+      input {
+        flex: 1;
+        accent-color: #d8bc7a;
+      }
+      #films {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+        gap: 24px;
+      }
+      article {
+        border: 1px solid #425b50;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #203a36;
+      }
+      canvas {
+        width: 100%;
+        display: block;
+        image-rendering: pixelated;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 16px 18px 8px;
+      }
+      article p {
+        margin: 8px 18px 18px;
+        font-size: 13px;
+      }
+      article button {
+        margin: 0 18px 18px;
+      }
+      article[data-listening='true'] {
+        border-color: #e3cf9d;
+      }
+      #program {
+        padding: 16px;
+        border: 1px solid #425b50;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="/tests/manual/cinema.html">← Outdoor cinema preview</a>
+      <h1>The Starlight Film Library</h1>
+      <p>
+        Six original shorts with original music and sound effects. Choose a film to hear its
+        soundtrack.
+      </p>
+      <p id="program"></p>
+      <div class="controls">
+        <button id="play">Play</button>
+        <button id="sound" aria-pressed="false">Turn sound on</button>
+        <input
+          id="progress"
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value="0"
+          aria-label="Film progress"
+        />
+        <output id="position">0%</output>
+      </div>
+      <p id="audio-status" role="status">Choose “Watch with sound” on any film below.</p>
+      <section id="films" aria-label="Film library"></section>
+    </main>
+    <script type="module">
+      import { CINEMA_FILMS, cinemaAt } from '/src/lib/cinema.ts';
+      import { drawCinemaFilm } from '/src/city/cinema-films.ts';
+      import { townDayAt, townMinutesAt } from '/src/lib/town-time.ts';
+      import { TownPlayer } from '/src/music/player.ts';
+      const slider = document.querySelector('#progress');
+      const play = document.querySelector('#play');
+      let progress = 0,
+        playing = false,
+        last;
+      let player,
+        selected = CINEMA_FILMS[0],
+        enabled = false,
+        audioError = '',
+        soundRequest = 0;
+      const sound = document.querySelector('#sound');
+      async function enableSound() {
+        const request = ++soundRequest;
+        try {
+          player ??= new TownPlayer();
+          await player.resume();
+          if (request !== soundRequest) return;
+          player.volume(0.7);
+          enabled = true;
+          audioError = '';
+        } catch {
+          audioError = 'Sound could not start. Try again.';
+        }
+        paint();
+      }
+      const screens = CINEMA_FILMS.map((film) => {
+        const article = document.createElement('article');
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 180;
+        canvas.setAttribute('aria-label', film.title);
+        const title = document.createElement('h2');
+        title.textContent = film.title;
+        const description = document.createElement('p');
+        description.textContent = `${film.duration}s · ${film.description}`;
+        const watch = document.createElement('button');
+        watch.textContent = 'Watch with sound';
+        watch.setAttribute('aria-label', `Watch ${film.title} with sound`);
+        watch.onclick = () => {
+          player?.cinemaSound();
+          selected = film;
+          progress = 0;
+          playing = true;
+          void enableSound();
+        };
+        article.append(canvas, title, description, watch);
+        document.querySelector('#films').append(article);
+        return { film, article, ctx: canvas.getContext('2d') };
+      });
+      function paint() {
+        for (const { film, ctx, article } of screens) {
+          drawCinemaFilm(ctx, film, progress * film.duration);
+          article.dataset.listening = String(enabled && selected.id === film.id);
+        }
+        player?.cinemaSound(
+          enabled && playing && !document.hidden
+            ? {
+                film: selected,
+                elapsed: progress * selected.duration,
+                key: selected.id,
+                gain: 1,
+                pan: 0,
+              }
+            : undefined,
+        );
+        sound.textContent = enabled ? 'Mute' : 'Turn sound on';
+        sound.setAttribute('aria-pressed', String(enabled));
+        document.querySelector('#audio-status').textContent =
+          audioError ||
+          (enabled
+            ? `${selected.title} · ${!playing ? 'Paused' : player?.cinemaStatus === 'preparing' ? 'Preparing soundtrack…' : player?.cinemaStatus === 'error' ? 'Sound could not load. Toggle sound to retry.' : 'Music + sound effects'}`
+            : 'Choose “Watch with sound” on any film below.');
+        slider.value = progress * 100;
+        document.querySelector('#position').value = `${Math.round(progress * 100)}%`;
+        play.textContent = playing ? 'Pause' : 'Play';
+        const now = Date.now();
+        const bill = cinemaAt(townMinutesAt(now), townDayAt(now)).program;
+        document.querySelector('#program').textContent =
+          `Town night ${bill.day} · ${bill.films.map((film) => film.title).join(' → ')}`;
+      }
+      play.onclick = () => {
+        playing = !playing;
+        paint();
+      };
+      sound.onclick = () => {
+        if (enabled) {
+          ++soundRequest;
+          enabled = false;
+          paint();
+        } else void enableSound();
+      };
+      slider.oninput = () => {
+        progress = Number(slider.value) / 100;
+        playing = false;
+        paint();
+      };
+      function tick(now) {
+        if (playing && !document.hidden && last !== undefined) {
+          progress = (progress + Math.min(now - last, 250) / (selected.duration * 1000)) % 1;
+          paint();
+        }
+        last = now;
+        requestAnimationFrame(tick);
+      }
+      document.addEventListener('visibilitychange', () => {
+        last = undefined;
+        paint();
+      });
+      window.addEventListener('pagehide', () => {
+        ++soundRequest;
+        player?.dispose();
+      });
+      paint();
+      requestAnimationFrame(tick);
+    </script>
+  </body>
+</html>

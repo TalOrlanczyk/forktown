@@ -130,9 +130,12 @@
         <a href="/#venue=cinema">Visit the live town →</a>
       </header>
       <div class="bill" id="bill"></div>
+      <p><a href="/tests/manual/cinema-films.html">Preview all six films →</a></p>
       <nav id="films"></nav>
       <div class="options">
-        <button id="play">Pause</button><button id="tonight">Watch tonight from the start</button
+        <button id="play">Pause</button
+        ><button id="sound" aria-pressed="false">Turn sound on</button
+        ><button id="tonight">Watch tonight from the start</button
         ><button id="interval">Cinema break</button><button id="raise">Raise screen</button
         ><button id="lower">Lower screen</button><button id="daylight">Daytime venue</button
         ><label><input type="checkbox" id="close" /> Closer to the screen</label
@@ -150,11 +153,13 @@
         import {
           cinemaProgram,
           cinemaAt,
+          cinemaListening,
           CINEMA_FRAME,
           CINEMA_SCREEN_RISE,
           CINEMA_SCREEN_ROLL_SECONDS,
         } from '/src/lib/cinema.ts';
         import { SCREEN_ORIGIN, SCREEN_SCALE } from '/src/city/cinema.ts';
+        import { TownPlayer } from '/src/music/player.ts';
         import { eventsForDay, HOUSE_PLOTS } from '/src/lib/events.ts';
         import { places } from '/src/lib/places.ts';
         import { simulateResidents, timeLabel } from '/src/lib/simulation.ts';
@@ -175,6 +180,8 @@
         let time = bill.start,
           playing = !matchMedia('(prefers-reduced-motion: reduce)').matches,
           last = 0;
+        let player,
+          soundEnabled = false;
         slider.min = CINEMA_SCREEN_RISE;
         slider.max = bill.end + CINEMA_SCREEN_ROLL_SECONDS;
         for (const [index, slot] of bill.slots.filter((slot) => slot.film).entries()) {
@@ -208,12 +215,24 @@
               }
             : CINEMA_FRAME.center;
           const zoom = close ? 3.3 : 1.5;
+          const camera = { x: 600 - center.x * zoom, y: 350 - center.y * zoom, zoom };
+          const film = state.slot?.film;
+          player?.cinemaSound(
+            soundEnabled && playing && !document.hidden && film
+              ? {
+                  film,
+                  elapsed: state.elapsed,
+                  key: `${day}:${film.id}`,
+                  ...cinemaListening(camera, 1200, 740),
+                }
+              : undefined,
+          );
           const homes = full ? previewHomes : places;
           renderCity({
             ctx,
             width: 1200,
             height: 740,
-            camera: { x: 600 - center.x * zoom, y: 350 - center.y * zoom, zoom },
+            camera,
             places,
             residents: simulateResidents(homes, time % 1440, day + Math.floor(time / 1440)),
             events: eventsForDay(day + Math.floor(time / 1440), time % 1440),
@@ -232,6 +251,19 @@
         document.querySelector('#play').onclick = () => {
           playing = !playing;
           paint();
+        };
+        document.querySelector('#sound').onclick = async () => {
+          const button = document.querySelector('#sound');
+          try {
+            player ??= new TownPlayer();
+            if (!soundEnabled) await player.resume();
+            soundEnabled = !soundEnabled;
+            button.textContent = soundEnabled ? 'Mute' : 'Turn sound on';
+            button.setAttribute('aria-pressed', String(soundEnabled));
+            paint();
+          } catch {
+            button.textContent = 'Retry sound';
+          }
         };
         document.querySelector('#tonight').onclick = () => {
           time = bill.start;
@@ -266,7 +298,7 @@
           paint();
         };
         function tick(now) {
-          if (playing) {
+          if (playing && !document.hidden) {
             time += (now - last) / 1000;
             if (time >= bill.end + CINEMA_SCREEN_ROLL_SECONDS + 3) time = CINEMA_SCREEN_RISE;
             paint();
@@ -274,6 +306,8 @@
           last = now;
           requestAnimationFrame(tick);
         }
+        document.addEventListener('visibilitychange', paint);
+        window.addEventListener('pagehide', () => player?.dispose());
         paint();
         requestAnimationFrame(tick);
       </script>

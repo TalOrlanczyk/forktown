@@ -215,14 +215,286 @@ function duckling(ctx: Ctx, p: number, seconds: number) {
   );
 }
 
-/** Original silent shorts, drawn locally at any point in their own timeline. */
+function racer(ctx: Ctx, x: number, y: number, color: string, number: number) {
+  oval(ctx, x, y + 7, 17, 4, '#302D3C');
+  box(ctx, x - 12, y + 1, 7, 8, '#34333E');
+  box(ctx, x + 7, y + 1, 7, 8, '#34333E');
+  oval(ctx, x, y, 19, 7, color);
+  box(ctx, x - 15, y - 2, 30, 3, '#FFE5AA');
+  oval(ctx, x - 2, y - 9, 7, 8, '#43584D');
+  box(ctx, x + 2, y - 15, 7, 7, '#789773');
+  box(ctx, x + 7, y - 14, 2, 2, '#FFF1C9');
+  box(ctx, x + 3, y - 20, 1, 5, '#43584D');
+  box(ctx, x + 8, y - 19, 1, 4, '#43584D');
+  ctx.fillStyle = '#302D3C';
+  ctx.font = 'bold 7px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(number), x, y + 3);
+}
+function race(ctx: Ctx, p: number, seconds: number) {
+  box(ctx, 0, 0, W, H, '#D8BC92');
+  box(ctx, 0, 0, W, 59, '#70958F');
+  for (let i = 0; i < 8; i++) {
+    box(ctx, i * 45, 0, 1, 59, '#A2B5A0');
+    box(ctx, 0, 24 + (i % 2) * 22, W, 1, '#A2B5A0');
+  }
+  // Oversized kitchen props establish the racers' miniature scale.
+  box(ctx, 21, 13, 40, 42, '#E7D9B9');
+  box(ctx, 17, 10, 48, 7, '#B76D62');
+  box(ctx, 29, 25, 24, 17, '#91AAA0');
+  oval(ctx, 250, 36, 28, 17, '#B27860');
+  oval(ctx, 250, 32, 28, 17, '#EBD0A0');
+  for (let i = 0; i < 6; i++)
+    box(ctx, 235 + (i % 3) * 12, 22 + Math.floor(i / 3) * 13, 4, 4, '#946952');
+  box(ctx, 0, 60, W, 7, '#A78569');
+  const progress = ease((p - 0.16) / 0.7);
+  for (let lane = 0; lane < 3; lane++) {
+    box(ctx, 0, 94 + lane * 27, W, 1, '#BA986F');
+    for (let i = 0; i < 9; i++) {
+      const x = ((((i * 43 - progress * 300) % 360) + 360) % 360) - 20;
+      box(ctx, x, 91 + lane * 27, 12, 2, '#EEDDAD');
+    }
+  }
+  for (let row = 0; row < 12; row++)
+    for (let col = 0; col < 2; col++)
+      box(ctx, 281 + col * 5, 67 + row * 7, 5, 7, (row + col) % 2 ? '#F9EAC5' : '#494251');
+  const sprint = ease((p - 0.2) / 0.67);
+  const sweep = ease((p - 0.57) / 0.23);
+  const finish = ease((p - 0.84) / 0.1);
+  const slow = 37 + sprint * 78 + sweep * 182;
+  const xs = [37 + sprint * 255, 37 + sprint * 248, slow];
+  if (p > 0.57 && p < 0.94) {
+    const mx = slow - 17;
+    box(ctx, mx - 7, 26, 5, 95, '#AF7457');
+    box(ctx, mx - 20, 116, 28, 9, '#A5B6AB');
+    for (let i = 0; i < 7; i++)
+      box(ctx, mx - 23 + i * 5, 125, 4, 21 + Math.sin(seconds * 9 + i) * 3, '#ECE1C1');
+  }
+  xs.forEach((x, i) =>
+    racer(ctx, x - finish * 21, 85 + i * 27, ['#C75E60', '#6593AC', '#D3AE4C'][i], i + 1),
+  );
+  if (p < 0.18) {
+    const lit = Math.min(2, Math.floor(p / 0.06));
+    box(ctx, 126, 18, 68, 24, '#414B4A');
+    for (let i = 0; i < 3; i++) oval(ctx, 139 + i * 21, 30, 6, 6, i <= lit ? '#EFBA70' : '#62706A');
+  }
+  if (p > 0.88) {
+    star(ctx, 278, 111, '#FFF0A6', 5);
+    words(ctx, '1ST: NUMBER 3!', 30, 12);
+  }
+  words(
+    ctx,
+    p < 0.18
+      ? 'READY... SET...'
+      : p < 0.57
+        ? 'THE KITCHEN GRAND PRIX'
+        : p < 0.88
+          ? 'HERE COMES THE CLEANUP CREW!'
+          : 'A CLEAN SWEEP.',
+    168,
+    9,
+    '#4C4548',
+  );
+}
+
+function duelist(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  facing: number,
+  color: string,
+  angle: number,
+  crouch: number,
+  bow: number,
+  feather = true,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+  box(ctx, -10, -13, 6, 13, '#354255');
+  box(ctx, 5, -13, 6, 13, '#354255');
+  box(ctx, -13, -3, 10, 4, '#263447');
+  box(ctx, 5, -3, 11, 4, '#263447');
+  ctx.translate(0, crouch);
+  ctx.rotate(bow);
+  box(ctx, -12, -35, 19, 22, color);
+  box(ctx, -12, -17, 20, 4, '#E2B97C');
+  box(ctx, -7, -49, 16, 14, '#E7BC91');
+  box(ctx, 5, -44, 2, 2, '#354255');
+  box(ctx, -12, -53, 26, 6, '#354255');
+  box(ctx, -7, -61, 17, 10, color);
+  if (feather) {
+    box(ctx, -6, -67, 4, 9, '#F1DDAD');
+    box(ctx, -10, -69, 6, 4, '#F1DDAD');
+  }
+  box(ctx, 4, -32, 13, 6, color);
+  box(ctx, 14, -32, 5, 6, '#E7BC91');
+  ctx.translate(17, -29);
+  ctx.rotate(angle);
+  box(ctx, -4, -2, 11, 4, '#866447');
+  box(ctx, 5, -8, 3, 16, '#D9B375');
+  box(ctx, 8, -2, 39, 4, '#C9DCE0');
+  box(ctx, 11, -2, 35, 1, '#FFFFFF');
+  ctx.restore();
+}
+function duel(ctx: Ctx, p: number, seconds: number) {
+  box(ctx, 0, 0, W, H, '#67546C');
+  box(ctx, 0, 68, W, 66, '#927A82');
+  oval(ctx, 252, 45, 22, 22, '#E5B48B');
+  for (let i = 0; i < 5; i++) {
+    const x = i * 77 - 8;
+    box(ctx, x, 63, 40, 67, '#554E67');
+    for (let j = 0; j < 3; j++) box(ctx, x + j * 16, 54, 8, 12, '#554E67');
+    box(ctx, x + 15, 83, 8, 19, '#E3B87C');
+  }
+  box(ctx, 0, 131, W, 49, '#555667');
+  box(ctx, 0, 131, W, 6, '#B1A09B');
+  for (let i = 0; i < 9; i++) {
+    box(ctx, i * 40, 138, 1, 17, '#787380');
+    box(ctx, i * 40 + 20, 155, 1, 25, '#787380');
+  }
+  box(ctx, 0, 154, W, 1, '#787380');
+  const approach = ease((p - 0.1) / 0.15);
+  const fighting = p >= 0.27 && p < 0.72;
+  const exchange = clamp((p - 0.27) / 0.45) * 6;
+  const beat = exchange % 1;
+  const strike = fighting ? Math.sin(beat * Math.PI) : 0;
+  const turn = Math.floor(exchange) % 2;
+  const retreat = ease((p - 0.78) / 0.1);
+  const left = 58 + approach * 48 + (turn === 0 ? 1 : -1) * strike * 7 - retreat * 8;
+  const right = 262 - approach * 48 + (turn === 0 ? 1 : -1) * strike * 7 + retreat * 8;
+  const salute = (1 - ease(p / 0.1)) * -1.2;
+  const bow = Math.sin(clamp((p - 0.86) / 0.14) * Math.PI) * 0.45;
+  const leftAngle = fighting ? -1.2 + strike * 0.85 : salute + retreat * 0.7;
+  const rightAngle = fighting ? 0.25 - strike * 0.6 : salute + retreat * 0.7;
+  duelist(ctx, left, 131, 1, '#739DB0', leftAngle, turn === 1 ? strike * 4 : 0, bow);
+  duelist(ctx, right, 131, -1, '#BA7279', rightAngle, turn === 0 ? strike * 4 : 0, bow, p <= 0.72);
+  if (fighting && beat > 0.38 && beat < 0.64) {
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.3 + seconds;
+      star(ctx, (left + right) / 2 + Math.cos(a) * 9, 90 + Math.sin(a) * 8, '#FFE6A1', (i % 2) + 1);
+    }
+  }
+  if (p > 0.72) {
+    const fall = ease((p - 0.72) / 0.15);
+    // One loose hat feather ends the duel; both opponents bow.
+    box(ctx, 220 - fall * 56 + Math.sin(seconds * 3) * 3, 62 + fall * 63, 9, 3, '#F1DDAD');
+  }
+  words(
+    ctx,
+    p < 0.25
+      ? 'EN GARDE.'
+      : p < 0.72
+        ? 'CLASH! PARRY! RIPOSTE!'
+        : p < 0.86
+          ? 'A VERY CLOSE SHAVE.'
+          : 'HONOR AMONG RIVALS.',
+    169,
+    10,
+  );
+}
+
+function filmPerson(ctx: Ctx, x: number, y: number, color: string, lifted = false) {
+  box(ctx, x - 4, y - 13, 3, 13, '#333E54');
+  box(ctx, x + 2, y - 13, 3, 13, '#333E54');
+  box(ctx, x - 6, y - 26, 13, 15, color);
+  box(ctx, x - 5, y - 37, 11, 11, '#E8BC93');
+  box(ctx, x - 5, y - 39, 12, 5, '#514352');
+  box(ctx, x - 2, y - 32, 2, 2, '#333E54');
+  box(ctx, x + 3, y - 32, 2, 2, '#333E54');
+  box(ctx, x - 10, y - (lifted ? 34 : 24), 4, 13, color);
+  box(ctx, x + 7, y - (lifted ? 34 : 24), 4, 13, color);
+}
+function ufo(ctx: Ctx, p: number, seconds: number) {
+  nightSky(ctx, seconds);
+  for (let i = 0; i < 7; i++) {
+    const x = i * 49 - 7,
+      top = 73 + (i % 3) * 14;
+    box(ctx, x, top, 43, 73, ['#42516A', '#526179', '#38495F'][i % 3]);
+    box(ctx, x - 2, top - 5, 47, 5, '#738091');
+    for (let j = 0; j < 6; j++)
+      box(ctx, x + 8 + (j % 2) * 19, top + 11 + Math.floor(j / 2) * 15, 7, 9, '#D5B57D');
+  }
+  box(ctx, 0, 145, W, 35, '#354151');
+  box(ctx, 0, 145, W, 4, '#9AA097');
+  for (let i = 0; i < 9; i++) box(ctx, i * 43, 157, 22, 2, '#A9A589');
+  const targets = [76, 160, 244];
+  const colors = ['#D99183', '#E2C579', '#7DAEAB'];
+  let sx = -60 + ease(p / 0.2) * 136;
+  const abduct = clamp((p - 0.23) / 0.54) * 3;
+  const index = Math.min(2, Math.floor(abduct));
+  const local = abduct - index;
+  if (p >= 0.23) sx = targets[index] - (index > 0 ? 84 * (1 - ease(local / 0.25)) : 0);
+  const departure = ease((p - 0.83) / 0.17);
+  sx += departure * 150;
+  const sy = 35 - departure * 80 + Math.sin(seconds * 2) * 2;
+  const beaming = p >= 0.23 && p < 0.77 && local >= 0.25 && local < 0.95;
+  if (beaming) {
+    ctx.fillStyle = '#B5F0C14D';
+    ctx.beginPath();
+    ctx.moveTo(sx - 13, sy + 10);
+    ctx.lineTo(sx + 13, sy + 10);
+    ctx.lineTo(sx + 31, 148);
+    ctx.lineTo(sx - 31, 148);
+    ctx.closePath();
+    ctx.fill();
+    for (let i = 0; i < 6; i++) {
+      const y = 53 + ((((i * 17 - seconds * 22) % 90) + 90) % 90);
+      box(ctx, sx - 14, y, 28, 1, '#C9F4BF');
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    const lift = ease((abduct - i - 0.3) / 0.58);
+    if (lift < 1) {
+      ctx.save();
+      ctx.globalAlpha = 1 - ease((lift - 0.8) / 0.2);
+      filmPerson(
+        ctx,
+        targets[i] + (lift > 0 ? Math.sin(seconds * 4 + i) * 3 : 0),
+        144 - lift * 102,
+        colors[i],
+        lift > 0,
+      );
+      ctx.restore();
+    }
+  }
+  oval(ctx, sx, sy - 7, 23, 17, '#8BC6BB');
+  oval(ctx, sx, sy - 7, 16, 12, '#517E88');
+  box(ctx, sx - 5, sy - 15, 10, 10, '#C0DDA0');
+  box(ctx, sx - 4, sy - 12, 2, 3, '#273F50');
+  box(ctx, sx + 2, sy - 12, 2, 3, '#273F50');
+  oval(ctx, sx, sy + 4, 41, 11, '#809EAD');
+  box(ctx, sx - 28, sy + 10, 56, 4, '#BBD6C8');
+  for (let i = 0; i < 3; i++) {
+    const collected = abduct >= i + 0.88;
+    oval(ctx, sx - 23 + i * 23, sy + 3, 6, 4, collected ? colors[i] : '#DFEBAD');
+    if (collected) box(ctx, sx - 25 + i * 23, sy, 4, 3, '#F3D7AC');
+  }
+  if (p > 0.92) {
+    // Their forgotten shopping bag is the only thing left on the street.
+    box(ctx, 155, 135, 10, 10, '#C4A581');
+    box(ctx, 158, 132, 4, 2, '#C4A581');
+  }
+  words(
+    ctx,
+    p < 0.23
+      ? 'AN ORDINARY NIGHT IN FORKTOWN...'
+      : p < 0.77
+        ? 'PLEASE REMAIN... AIRBORNE.'
+        : 'THREE ONE-WAY TICKETS.',
+    173,
+    8,
+  );
+}
+
+/** Original shorts, drawn locally at any point in their own timeline. */
 export function drawCinemaFilm(ctx: Ctx, film: CinemaFilm, elapsed: number) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, W, H);
   ctx.clip();
   const p = clamp((elapsed - 3) / (film.duration - 6));
-  ({ popcorn, moon, duckling })[film.artwork](ctx, p, elapsed);
+  ({ popcorn, moon, duckling, race, duel, ufo })[film.artwork](ctx, p, elapsed);
   if (elapsed < 3 || elapsed >= film.duration - 3) {
     box(ctx, 12, 52, 296, 63, '#293A48');
     words(ctx, elapsed < 3 ? 'FORKTOWN PICTURE HOUSE' : 'THE END', 70, 8, '#E5B97D');

@@ -9,6 +9,7 @@ import { townCatAt, TOWN_CAT_NAME } from '../lib/town-cat';
 import { simulateResidents } from '../lib/simulation';
 import { useTownClock } from '../lib/use-town-clock';
 import { trackForTown } from '../music/score';
+import { cinemaAt, cinemaListening } from '../lib/cinema';
 import Soundtrack from './Soundtrack';
 import ResidentPreview from './ResidentPreview';
 import '../live.css';
@@ -22,6 +23,8 @@ export default function LiveStream() {
   const lastShot = useRef<string | null>(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [listening, setListening] = useState({ gain: 0, pan: 0 });
+  const [cinemaField, setCinemaField] = useState({ gain: 0, pan: 0 });
+  const cinema = useMemo(() => cinemaAt(clock.minutes, clock.day), [clock.minutes, clock.day]);
   const program = useMemo(() => liveProgram(places, clock.day), [clock.day]);
   const cinemaEvening = clock.minutes < 360;
   const events = useMemo(
@@ -108,6 +111,12 @@ export default function LiveStream() {
         x >= 0 && x <= size.width && y >= 0 && y <= size.height ? 'visible' : 'hidden';
     }
     const field = footballListening(camera.current, size.width, size.height);
+    const screen = cinemaListening(camera.current, size.width, size.height);
+    setCinemaField((old) =>
+      Math.abs(old.gain - screen.gain) < 0.002 && Math.abs(old.pan - screen.pan) < 0.002
+        ? old
+        : screen,
+    );
     setListening((old) =>
       Math.abs(old.gain - field.gain) < 0.002 && Math.abs(old.pan - field.pan) < 0.002
         ? old
@@ -190,6 +199,8 @@ export default function LiveStream() {
         playing={clock.playing}
         football={football}
         listening={listening}
+        cinema={cinema}
+        cinemaListening={cinemaField}
         autoStart
         hideControls
       />

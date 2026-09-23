@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TownPlayer } from '../src/music/player';
-import { renderTrack } from '../src/music/synth';
-vi.mock('../src/music/synth', () => ({ renderTrack: vi.fn() }));
+import { renderTrack, renderCinemaTrack } from '../src/music/synth';
+import { CINEMA_FILMS } from '../src/lib/cinema';
+vi.mock('../src/music/synth', () => ({ renderTrack: vi.fn(), renderCinemaTrack: vi.fn() }));
 
 const parameter = () => ({
   value: 0,
@@ -55,6 +56,27 @@ afterEach(() => vi.unstubAllGlobals());
 const buffer = {} as AudioBuffer;
 
 describe('Soundtrack playback lifecycle', () => {
+  it.each(['suspend', 'stop', 'dispose'] as const)(
+    'stops the film soundtrack when the town player calls %s',
+    async (action) => {
+      vi.mocked(renderCinemaTrack).mockResolvedValue(buffer);
+      const player = new TownPlayer();
+      player.cinemaSound({
+        film: CINEMA_FILMS[0],
+        key: 'night:popcorn',
+        elapsed: 18,
+        gain: 0.8,
+        pan: 0,
+      });
+      await Promise.resolve();
+      expect(sources[0].start).toHaveBeenCalledWith(10, 18);
+      expect(player.cinemaStatus).toBe('playing');
+      await player[action]();
+      expect(sources[0].stop).toHaveBeenCalled();
+      expect(player.cinemaStatus).toBe('silent');
+      if (action !== 'dispose') player.dispose();
+    },
+  );
   it('stops nearby football sounds on pause, mute, and disposal without replaying them', async () => {
     const player = new TownPlayer();
     player.effect('kick', 0, 0);

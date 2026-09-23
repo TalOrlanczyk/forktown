@@ -36,7 +36,7 @@ import Soundtrack from './components/Soundtrack';
 import FootballMatch from './components/FootballMatch';
 import CalendarClock from './components/CalendarClock';
 import CinemaInfo from './components/CinemaInfo';
-import { CINEMA_VENUE, isCinemaPlot } from './lib/cinema';
+import { CINEMA_VENUE, isCinemaPlot, cinemaAt } from './lib/cinema';
 import { footballAt, isFootballPlot, FOOTBALL_VENUE } from './lib/football';
 import { trackForTown } from './music/score';
 import {
@@ -89,6 +89,8 @@ export default function App() {
   const clock = useTownClock();
   const football = useMemo(() => footballAt(clock.minutes, clock.day), [clock.minutes, clock.day]);
   const [listening, setListening] = useState({ gain: 0, pan: 0 });
+  const [cinemaListening, setCinemaListening] = useState({ gain: 0, pan: 0 });
+  const cinema = useMemo(() => cinemaAt(clock.minutes, clock.day), [clock.minutes, clock.day]);
   const selectedFootball = isFootballPlot(selectedPlot ?? '');
   const selectedFarm = isFarmPlot(selectedPlot ?? '');
   const night = clock.minutes < 360 || clock.minutes >= 1200;
@@ -253,6 +255,7 @@ export default function App() {
         day={clock.day}
         football={football}
         onListening={setListening}
+        onCinemaListening={setCinemaListening}
         followed={followed}
         onStopFollowing={() => setFollowed(null)}
         onResidentSelect={follow}
@@ -337,6 +340,8 @@ export default function App() {
           playing={clock.playing}
           football={football}
           listening={listening}
+          cinema={cinema}
+          cinemaListening={cinemaListening}
         />
       </nav>
 
