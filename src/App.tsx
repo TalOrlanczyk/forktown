@@ -449,7 +449,12 @@ export default function App() {
                       <ArrowRight size={15} />
                     </button>
                   )}
-                  {selected.sign.mode !== 'none' && <SignPreview sign={selected.sign} />}
+                  {selected.sign.mode !== 'none' && (
+                    <figure className="home-sign">
+                      <figcaption className="quiet-label">OUTDOOR SIGN</figcaption>
+                      <SignPreview sign={selected.sign} />
+                    </figure>
+                  )}
                   <div className="home-actions">
                     {draft?.id === selected.id ? (
                       <button
@@ -633,21 +638,21 @@ export default function App() {
             <p>One house. One neighbor. Your first contribution.</p>
             <ol>
               <li>
-                <span>01</span>
+                <span aria-hidden="true">1</span>
                 <div>
                   <strong>Fork the town</strong>
                   <p>Clone your copy and run it locally.</p>
                 </div>
               </li>
               <li>
-                <span>02</span>
+                <span aria-hidden="true">2</span>
                 <div>
                   <strong>Make a place</strong>
                   <p>Design your house. Save its JSON file.</p>
                 </div>
               </li>
               <li>
-                <span>03</span>
+                <span aria-hidden="true">3</span>
                 <div>
                   <strong>Join the neighborhood</strong>
                   <p>
