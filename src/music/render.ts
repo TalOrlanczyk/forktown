@@ -5,7 +5,7 @@ export type Mix = { left: Float32Array; right: Float32Array; sampleRate: number 
 
 // Additive/FM instruments rendered in a worker. The piano-roll score remains the
 // editable source; no external samples, streaming, or runtime oscillator graphs.
-function voice(note: Note, time: number, duration: number, random: number) {
+export function voice(note: Note, time: number, duration: number, random: number) {
   const f = 440 * 2 ** ((note.pitch - 69) / 12);
   const phase = 2 * Math.PI * f * time;
   const attack = Math.min(1, time / (note.voice === 'pad' ? 0.14 : 0.006));

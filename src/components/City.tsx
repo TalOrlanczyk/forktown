@@ -1,3 +1,6 @@
+import { isZooPlot, ZOO_FRAME } from '../lib/zoo';
+import { FARM, FARM_FRAME, isFarmPlot } from '../lib/farm';
+import { places as publishedPlaces } from '../lib/places';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crosshair, Minus, Plus, MapPin } from 'lucide-react';
 import { cityHit, renderCity, type Camera } from '../city/render';
@@ -6,12 +9,11 @@ import type { Place } from '../lib/schema';
 import type { ResidentState } from '../lib/simulation';
 import { residentActivityLabel } from '../lib/simulation';
 import { VENUES, venueAt, type TownEvent } from '../lib/events';
-import { CINEMA_FRAME, isCinemaPlot, cinemaAt } from '../lib/cinema';
+import { CINEMA_FRAME, isCinemaPlot, cinemaAt, cinemaListening } from '../lib/cinema';
 import { project, WORLD_BOUNDS } from '../lib/world';
 import {
   FOOTBALL_CENTER,
   FOOTBALL_VENUE,
-  GROUND,
   isFootballPlot,
   footballListening,
   type FootballState,
@@ -34,6 +36,7 @@ type Props = {
   day: number;
   football: FootballState;
   onListening: (listening: { gain: number; pan: number }) => void;
+  onCinemaListening: (listening: { gain: number; pan: number }) => void;
   followed: string | null;
   onStopFollowing: () => void;
   onResidentSelect: (id: string) => void;
@@ -52,6 +55,7 @@ const City = forwardRef<CityHandle, Props>(function City(
     day,
     football,
     onListening,
+    onCinemaListening,
     followed,
     onStopFollowing,
     onResidentSelect,
@@ -90,6 +94,7 @@ const City = forwardRef<CityHandle, Props>(function City(
   cameraRef.current = renderedCamera;
   useEffect(() => {
     onListening(footballListening(renderedCamera, size.width, size.height));
+    onCinemaListening(cinemaListening(renderedCamera, size.width, size.height));
   }, [
     renderedCamera.x,
     renderedCamera.y,
@@ -97,6 +102,7 @@ const City = forwardRef<CityHandle, Props>(function City(
     size.width,
     size.height,
     onListening,
+    onCinemaListening,
   ]);
   const footballCamera = (width: number, height: number): Camera => {
     const pt = project(FOOTBALL_CENTER.x, FOOTBALL_CENTER.y);
@@ -123,6 +129,38 @@ const City = forwardRef<CityHandle, Props>(function City(
     return {
       x: (mobile ? width / 2 : (width - 370) / 2) - CINEMA_FRAME.center.x * zoom,
       y: (mobile ? height * 0.29 : height * 0.5) - CINEMA_FRAME.center.y * zoom,
+      zoom,
+    };
+  };
+  const zooCamera = (width: number, height: number): Camera => {
+    const mobile = width < 600;
+    const zoom = Math.max(
+      0.05,
+      Math.min(
+        1.4,
+        (width - (mobile ? 24 : 400)) / ZOO_FRAME.width,
+        (mobile ? height * 0.43 : height - 150) / ZOO_FRAME.height,
+      ),
+    );
+    return {
+      x: (mobile ? width / 2 : (width - 370) / 2) - ZOO_FRAME.center.x * zoom,
+      y: (mobile ? height * 0.29 : height * 0.5) - ZOO_FRAME.center.y * zoom,
+      zoom,
+    };
+  };
+  const farmCamera = (width: number, height: number): Camera => {
+    const mobile = width < 600;
+    const zoom = Math.max(
+      0.05,
+      Math.min(
+        1.4,
+        (width - (mobile ? 24 : 400)) / FARM_FRAME.width,
+        (mobile ? height * 0.43 : height - 150) / FARM_FRAME.height,
+      ),
+    );
+    return {
+      x: (mobile ? width / 2 : (width - 370) / 2) - FARM_FRAME.center.x * zoom,
+      y: (mobile ? height * 0.29 : height * 0.5) - (FARM_FRAME.center.y - 55) * zoom,
       zoom,
     };
   };
@@ -155,19 +193,22 @@ const City = forwardRef<CityHandle, Props>(function City(
   const neighborhoodCamera = useCallback(
     (width: number, height: number): Camera => {
       const overview = defaultCamera(width, height);
-      const points = [
+      const all = [
         ...initialPlaces.current.map((place) => place.plot),
-        ...VENUES.map((venue) => venue.plot),
+        ...VENUES.filter((venue) => venue.kind === 'green' || venue.kind === 'stage').map(
+          (venue) => venue.plot,
+        ),
       ].flatMap((id) => {
         const plot = getPlot(id);
         return plot ? [plotCenter(plot)] : [];
       });
-      points.push(
-        project(GROUND.left, GROUND.bottom),
-        project(GROUND.right, GROUND.top),
-        project(GROUND.right, GROUND.bottom),
-      );
-      if (!points.length) return overview;
+      if (!all.length) return overview;
+      // Frame where people live. A lone far-off house should not zoom the opening view back out.
+      const median = (values: number[]) => values.sort((a, b) => a - b)[values.length >> 1];
+      const mid = { x: median(all.map((p) => p.x)), y: median(all.map((p) => p.y)) };
+      const distance = (p: { x: number; y: number }) => Math.hypot(p.x - mid.x, p.y - mid.y);
+      const typical = median(all.map(distance));
+      const points = all.filter((p) => distance(p) <= Math.max(typical * 2.2, 260));
       const left = Math.min(...points.map((point) => point.x)) - 110;
       const right = Math.max(...points.map((point) => point.x)) + 110;
       const top = Math.min(...points.map((point) => point.y)) - 145;
@@ -198,6 +239,14 @@ const City = forwardRef<CityHandle, Props>(function City(
       reset,
       stopFollowing,
       focus: (id) => {
+        if (isFarmPlot(id)) {
+          setCamera(farmCamera(size.width, size.height));
+          return;
+        }
+        if (isZooPlot(id)) {
+          setCamera(zooCamera(size.width, size.height));
+          return;
+        }
         if (isCinemaPlot(id)) {
           setCamera(cinemaCamera(size.width, size.height));
           return;
@@ -227,7 +276,9 @@ const City = forwardRef<CityHandle, Props>(function City(
       setSize({ width, height });
       const initial = neighborhoodCamera(width, height);
       const selected = getPlot(selectedRef.current ?? '');
-      if (selected && isCinemaPlot(selected.id)) setCamera(cinemaCamera(width, height));
+      if (selected && isFarmPlot(selected.id)) setCamera(farmCamera(width, height));
+      else if (selected && isZooPlot(selected.id)) setCamera(zooCamera(width, height));
+      else if (selected && isCinemaPlot(selected.id)) setCamera(cinemaCamera(width, height));
       else if (selected && isFootballPlot(selected.id)) setCamera(footballCamera(width, height));
       else if (selected) {
         const point = plotCenter(selected),
@@ -294,6 +345,7 @@ const City = forwardRef<CityHandle, Props>(function City(
       height: size.height,
       camera: cameraRef.current,
       places,
+      ufoPlaces: publishedPlaces,
       selectedPlot,
       hoveredPlot: hover,
       night,
@@ -447,7 +499,11 @@ const City = forwardRef<CityHandle, Props>(function City(
           <span>
             {hoveredPlace?.name ??
               venueAt(hover)?.name ??
-              (isFootballPlot(hover) ? FOOTBALL_VENUE.name : `Plot ${hover} · Make it yours`)}
+              (isFarmPlot(hover)
+                ? FARM.name
+                : isFootballPlot(hover)
+                  ? FOOTBALL_VENUE.name
+                  : `Plot ${hover} · Make it yours`)}
           </span>
         </div>
       )}

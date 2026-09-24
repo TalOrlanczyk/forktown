@@ -3,6 +3,7 @@ import { compileSign } from './sign.ts';
 import { getPlot } from './world.ts';
 import { venueAt } from './events.ts';
 import { isFootballPlot } from './football.ts';
+import { isFarmPlot } from './farm.ts';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a six-digit hex color.');
 export const ACTIVITIES = ['stroll', 'work', 'home'] as const;
@@ -17,6 +18,7 @@ export const DEFAULT_DESIGN = {
 };
 export const DEFAULT_RESIDENT = {
   name: 'New neighbor',
+  figure: 'male' as const,
   skin: '#D9B68B',
   hair: '#675A48',
   outfit: '#789B76',
@@ -50,11 +52,12 @@ export const designSchema = z
 export const residentSchema = z
   .object({
     name: z.string().trim().min(2, 'Give your resident a name.').max(24),
+    figure: z.enum(['male', 'female']).default('male'),
     skin: color,
     hair: color,
     outfit: color,
     accessory: z.enum(['none', 'hat', 'glasses']),
-    greeting: z.string().trim().min(1).max(24),
+    greeting: z.string().trim().min(1).max(40),
     routine: z
       .object({
         morning: z.enum(ACTIVITIES),
@@ -114,6 +117,10 @@ export const placeSchema = z
       .regex(
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
         'Use lowercase letters, numbers, and single hyphens, e.g. moon-cafe.',
+      )
+      .refine(
+        (id) => !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(id),
+        'This file id is reserved on Windows. Add a word, e.g. con-house or aux-cafe.',
       ),
     name: z
       .string()
@@ -129,7 +136,7 @@ export const placeSchema = z
       .string()
       .refine((id) => !!getPlot(id), 'Choose an existing plot from the town map.')
       .refine(
-        (id) => !venueAt(id) && !isFootballPlot(id),
+        (id) => !venueAt(id) && !isFootballPlot(id) && !isFarmPlot(id),
         'This plot is reserved for a public town venue. Choose a house plot.',
       ),
     building: z.enum(BUILDING_TYPES),
@@ -153,7 +160,7 @@ export const draftSchema = placeSchema.extend({
   creator: z.string().max(39),
   story: z.string().max(180),
   resident: residentSchema
-    .extend({ name: z.string().max(24), greeting: z.string().max(24) })
+    .extend({ name: z.string().max(24), greeting: z.string().max(40) })
     .default(DEFAULT_RESIDENT),
   sign: z
     .object({

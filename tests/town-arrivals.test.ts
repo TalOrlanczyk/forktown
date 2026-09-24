@@ -5,6 +5,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { readArrivalOrder } from '../scripts/town-arrivals';
+import { SUBPROCESS_TEST } from './subprocess-timeout';
 
 const folders: string[] = [];
 const temporary = () => {
@@ -38,7 +39,7 @@ function repository() {
   return { root, save, git };
 }
 
-it('uses join order, not alphabetical order or later edits to older homes', () => {
+it('uses join order, not alphabetical order or later edits to older homes', SUBPROCESS_TEST, () => {
   const { root, save, git } = repository();
   save('alpha', '{}');
   save('zebra', '{}');
@@ -49,7 +50,7 @@ it('uses join order, not alphabetical order or later edits to older homes', () =
   expect(readArrivalOrder(root)).toEqual(['zebra', 'alpha']);
 });
 
-it('does not invent arrivals from the boundary of a shallow checkout', () => {
+it('does not invent arrivals from the boundary of a shallow checkout', SUBPROCESS_TEST, () => {
   const { root, save } = repository();
   save('alpha', '{}');
   save('zebra', '{}');

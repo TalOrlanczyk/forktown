@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { SUBPROCESS_TEST } from './subprocess-timeout';
 
 const script = fileURLToPath(new URL('../scripts/configure-pages.mjs', import.meta.url));
 const created: string[] = [];
@@ -33,7 +34,7 @@ function configure(repository: string, override = '') {
     error: result.stderr,
   };
 }
-describe('Static publishing configuration', () => {
+describe('Static publishing configuration', SUBPROCESS_TEST, () => {
   it('uses a repository subpath for project Pages sites', () => {
     expect(configure('neighbor/forktown')).toMatchObject({
       status: 0,

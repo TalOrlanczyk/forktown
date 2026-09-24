@@ -1,0 +1,41 @@
+{
+  "id": "willow-lodge",
+  "name": "Willow Lodge",
+  "creator": "renanbazinin",
+  "plot": "Q3",
+  "building": "cottage",
+  "color": "#789B76",
+  "decoration": "flowers",
+  "story": "A small corner of the internet, made with curiosity and a little courage.",
+  "design": {
+    "wall": "#F0E5C8",
+    "trim": "#db924d",
+    "floors": 2,
+    "roof": "flat",
+    "windows": "shutters",
+    "garden": "paving",
+    "feature": "porch"
+  },
+  "resident": {
+    "name": "Emmett",
+    "figure": "female",
+    "skin": "#D9B68B",
+    "hair": "#675A48",
+    "outfit": "#789B76",
+    "accessory": "none",
+    "greeting": "gl hf",
+    "routine": {
+      "morning": "stroll",
+      "afternoon": "stroll",
+      "evening": "stroll",
+      "night": "stroll"
+    }
+  },
+  "sign": {
+    "mode": "text",
+    "text": "gl hf",
+    "color": "#000000",
+    "background": "#dedede",
+    "html": ""
+  }
+}

@@ -80,6 +80,7 @@ try {
     files,
     author: pr.user.login,
     authorPermission: await permissionFor(pr.user.login),
+    repositoryOwner: repo.split('/')[0],
     approved,
     readHead: async (file) => {
       if (!/^[a-f0-9]{40,64}$/.test(file.sha)) throw new Error('Invalid file SHA.');

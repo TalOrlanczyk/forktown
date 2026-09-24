@@ -39,6 +39,7 @@ export async function evaluatePolicy({
   files,
   author,
   authorPermission,
+  repositoryOwner,
   approved,
   readHead,
   readBase,
@@ -96,8 +97,16 @@ export async function evaluatePolicy({
         errors.push('The forktown creator is reserved for existing starter houses.');
       if (!['added', 'copied'].includes(file.status) && isHouse(oldPath)) {
         const original = await readBase(oldPath);
+        const ownerMaintainsStarter =
+          authorPermission === 'admin' &&
+          typeof repositoryOwner === 'string' &&
+          repositoryOwner.toLowerCase() === author.toLowerCase() &&
+          file.status === 'modified' &&
+          oldPath === file.filename &&
+          original.creator?.toLowerCase() === 'forktown' &&
+          house.creator.toLowerCase() === 'forktown';
         if (
-          original.creator?.toLowerCase() !== author.toLowerCase() ||
+          (!ownerMaintainsStarter && original.creator?.toLowerCase() !== author.toLowerCase()) ||
           house.creator.toLowerCase() !== original.creator?.toLowerCase() ||
           file.status === 'renamed'
         )

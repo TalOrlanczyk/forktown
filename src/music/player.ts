@@ -2,10 +2,13 @@ import type { TrackId } from './score';
 import { renderTrack } from './synth';
 import { renderFootballSound } from './football-sound';
 import type { FootballSound } from '../lib/football';
+import { CinemaPlayer, type CinemaPlayback } from './cinema-player';
 
 export class TownPlayer {
   private context: AudioContext;
   private output: GainNode;
+  private music: GainNode;
+  private cinema: CinemaPlayer;
   private current?: { source: AudioBufferSourceNode; gain: GainNode; track: TrackId };
   private cache = new Map<TrackId, Promise<AudioBuffer>>();
   private revision = 0;
@@ -19,13 +22,29 @@ export class TownPlayer {
     this.output = this.context.createGain();
     this.output.gain.value = 0.55;
     this.output.connect(this.context.destination);
+    this.music = this.context.createGain();
+    this.music.connect(this.output);
+    this.cinema = new CinemaPlayer(this.context, this.output, (gain) => {
+      this.music.gain.setTargetAtTime(
+        1 - Math.min(1, gain * 2.5) * 0.94,
+        this.context.currentTime,
+        0.12,
+      );
+    });
   }
   resume() {
     return this.context.resume();
   }
   suspend() {
     this.silenceEffects();
+    this.cinema.stop(true);
     return this.context.suspend();
+  }
+  cinemaSound(state?: CinemaPlayback) {
+    this.cinema.sync(state);
+  }
+  get cinemaStatus() {
+    return this.cinema.status;
   }
   effect(kind: FootballSound['kind'], volume: number, pan: number) {
     if (this.disposed || volume <= 0 || this.context.state !== 'running') return;
@@ -94,7 +113,7 @@ export class TownPlayer {
     source.loop = true;
     gain.gain.setValueAtTime(0, time);
     gain.gain.linearRampToValueAtTime(1, time + 1.5);
-    source.connect(gain).connect(this.output);
+    source.connect(gain).connect(this.music);
     const old = this.current;
     if (old) {
       old.gain.gain.cancelAndHoldAtTime(time);
@@ -112,6 +131,7 @@ export class TownPlayer {
   }
   stop() {
     this.silenceEffects();
+    this.cinema.stop();
     ++this.revision;
     this.current = undefined;
     const time = this.context.currentTime;
@@ -123,6 +143,7 @@ export class TownPlayer {
     }
   }
   dispose() {
+    this.cinema.dispose();
     this.silenceEffects();
     this.effectBuffers.clear();
     this.disposed = true;
@@ -134,6 +155,7 @@ export class TownPlayer {
     this.active.clear();
     this.cache.clear();
     this.output.disconnect();
+    this.music.disconnect();
     void this.context.close();
   }
 }

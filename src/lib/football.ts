@@ -1,4 +1,5 @@
 import { FOOTBALL_SITE } from './town-config.ts';
+import { TOWN_DAY_MS, UTC_DAY_MS } from './town-time.ts';
 import { PLOTS, hash, project, type Point } from './world.ts';
 
 export const FOOTBALL_PLOTS = PLOTS.filter(
@@ -94,6 +95,10 @@ function attack(day: number, match: number, index: number) {
 }
 const moments = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
 export function footballAt(minutes: number, day = 0): FootballState {
+  // `day` is the shared 24-minute town cycle, not a local calendar date.
+  // Replay the same six fixtures throughout a UTC date; refresh at UTC midnight.
+  // Keep the original cycle in the state so sound never carries across replays.
+  const utcDay = Math.floor((day * TOWN_DAY_MS) / UTC_DAY_MS);
   const time = ((minutes % 1440) + 1440) % 1440;
   const live = time >= 360 && time < 1200;
   const match = live ? Math.floor((time - 360) / 140) : 0;
@@ -111,7 +116,7 @@ export function footballAt(minutes: number, day = 0): FootballState {
   const playing = phase === 'first' || phase === 'second';
   const gameTime = Math.min(60, elapsed) + Math.max(0, Math.min(60, elapsed - 68));
   const seconds = Math.floor(gameTime * 5);
-  const attacks = Array.from({ length: 10 }, (_, i) => attack(day, match, i));
+  const attacks = Array.from({ length: 10 }, (_, i) => attack(utcDay, match, i));
   const score: [number, number] = [0, 0],
     shots: [number, number] = [0, 0],
     saves: [number, number] = [0, 0];

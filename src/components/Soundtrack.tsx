@@ -4,12 +4,15 @@ import { TRACKS, type TrackId } from '../music/score';
 import { TownPlayer } from '../music/player';
 import { footballSoundsBetween } from '../music/football-sound';
 import type { FootballState } from '../lib/football';
+import type { cinemaAt } from '../lib/cinema';
 
 export default function Soundtrack({
   track,
   playing,
   football,
   listening,
+  cinema,
+  cinemaListening,
   autoStart = false,
   hideControls = false,
 }: {
@@ -17,6 +20,8 @@ export default function Soundtrack({
   playing: boolean;
   football: FootballState;
   listening: { gain: number; pan: number };
+  cinema: ReturnType<typeof cinemaAt>;
+  cinemaListening: { gain: number; pan: number };
   autoStart?: boolean;
   hideControls?: boolean;
 }) {
@@ -29,6 +34,21 @@ export default function Soundtrack({
   const [hidden, setHidden] = useState(document.hidden);
   const request = useRef(0);
   const previousMatch = useRef<FootballState | null>(null);
+  const audibleFilm =
+    enabled && playing && !hidden && cinemaListening.gain >= 0.005 ? cinema.slot?.film : undefined;
+  useEffect(() => {
+    const film = cinema.slot?.film;
+    player.current?.cinemaSound(
+      enabled && playing && !hidden && film
+        ? {
+            film,
+            elapsed: cinema.elapsed,
+            key: `${cinema.program.day}:${film.id}`,
+            ...cinemaListening,
+          }
+        : undefined,
+    );
+  }, [cinema, cinemaListening, enabled, playing, hidden]);
   useEffect(() => {
     if (!enabled || !playing || hidden || !football.live || listening.gain < 0.015) {
       previousMatch.current = null;
@@ -127,7 +147,7 @@ export default function Soundtrack({
       <button
         aria-label="Town sound"
         aria-expanded={open}
-        title={enabled ? TRACKS[track].title : 'Turn on town sound'}
+        title={enabled ? (audibleFilm?.title ?? TRACKS[track].title) : 'Turn on town sound'}
         onClick={() => setOpen(!open)}
       >
         {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
@@ -149,10 +169,11 @@ export default function Soundtrack({
               <X size={14} />
             </button>
           </div>
-          <strong>{TRACKS[track].title}</strong>
-          <p>{TRACKS[track].subtitle}</p>
+          <strong>{audibleFilm?.title ?? TRACKS[track].title}</strong>
+          <p>{audibleFilm ? 'Original movie score and sound effects' : TRACKS[track].subtitle}</p>
           <p className="sound-field-note">
-            Zoom close to the football for kicks, whistles, and cheers.
+            Zoom into the cinema for movie music and sound effects, or the football for kicks,
+            whistles, and cheers.
           </p>
           <button className="sound-toggle" onClick={() => void toggle()} aria-pressed={enabled}>
             {enabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -175,6 +196,11 @@ export default function Soundtrack({
           </label>
           <small role="status">
             {error ||
+              (audibleFilm && player.current?.cinemaStatus === 'error'
+                ? 'Movie sound could not load. Turn sound off and on to retry.'
+                : audibleFilm && player.current?.cinemaStatus === 'preparing'
+                  ? 'Preparing movie soundtrack…'
+                  : '') ||
               (enabled
                 ? !playing
                   ? 'Paused with the town'

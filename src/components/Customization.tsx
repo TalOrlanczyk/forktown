@@ -138,6 +138,12 @@ export function NeighborDetails({
         <Color label="Outfit" value={resident.outfit} onChange={(v) => change('outfit', v)} />
       </div>
       <Choice
+        label="Figure"
+        value={resident.figure}
+        options={['male', 'female']}
+        onChange={(v) => change('figure', v)}
+      />
+      <Choice
         label="Accessory"
         value={resident.accessory}
         options={['none', 'hat', 'glasses']}
@@ -149,10 +155,10 @@ export function NeighborDetails({
           aria-invalid={attempted && !resident.greeting.trim()}
           aria-describedby={attempted && !resident.greeting.trim() ? 'error-resident' : undefined}
           value={resident.greeting}
-          maxLength={24}
+          maxLength={40}
           onChange={(e) => change('greeting', e.target.value)}
         />
-        <small>They may say this when passing another neighbor.</small>
+        <small>Up to 40 characters. They may say this when passing another neighbor.</small>
       </label>
       <div className="routine-fields">
         <h3>A day in their life</h3>
@@ -191,7 +197,8 @@ export function NeighborDetails({
           </select>
         </label>
         <small>
-          Night owls can join the midnight party or take a moonlit stroll, then head home to sleep.
+          Night owls can follow the movies with dancing, take moonlit walks, and relax on their
+          doorstep. Each has a bedtime between midnight and 05:00.
         </small>
       </div>
     </div>

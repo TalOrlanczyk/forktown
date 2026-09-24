@@ -1,3 +1,7 @@
+import ZooInfo from './components/ZooInfo';
+import FarmInfo from './components/FarmInfo';
+import { FARM, isFarmPlot } from './lib/farm';
+import { isZooPlot, ZOO_VENUE } from './lib/zoo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -7,8 +11,6 @@ import {
   Compass,
   ExternalLink,
   Music2,
-  Pause,
-  Play,
   Plus,
   Search,
   Share2,
@@ -32,8 +34,9 @@ import Modal from './components/Modal';
 import TownEvents from './components/TownEvents';
 import Soundtrack from './components/Soundtrack';
 import FootballMatch from './components/FootballMatch';
+import CalendarClock from './components/CalendarClock';
 import CinemaInfo from './components/CinemaInfo';
-import { CINEMA_VENUE, isCinemaPlot } from './lib/cinema';
+import { CINEMA_VENUE, isCinemaPlot, cinemaAt } from './lib/cinema';
 import { footballAt, isFootballPlot, FOOTBALL_VENUE } from './lib/football';
 import { trackForTown } from './music/score';
 import {
@@ -52,6 +55,9 @@ import { simulateResidents, residentActivityLabel, timeLabel } from './lib/simul
 
 type Panel = 'places' | 'neighbors' | 'events';
 function initialSelection() {
+  if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'farm') return FARM.plot;
+  if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'zoo')
+    return ZOO_VENUE.plot;
   if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'cinema')
     return CINEMA_VENUE.plot;
   if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'football')
@@ -83,7 +89,10 @@ export default function App() {
   const clock = useTownClock();
   const football = useMemo(() => footballAt(clock.minutes, clock.day), [clock.minutes, clock.day]);
   const [listening, setListening] = useState({ gain: 0, pan: 0 });
+  const [cinemaListening, setCinemaListening] = useState({ gain: 0, pan: 0 });
+  const cinema = useMemo(() => cinemaAt(clock.minutes, clock.day), [clock.minutes, clock.day]);
   const selectedFootball = isFootballPlot(selectedPlot ?? '');
+  const selectedFarm = isFarmPlot(selectedPlot ?? '');
   const night = clock.minutes < 360 || clock.minutes >= 1200;
   const cinemaEvening = clock.minutes < 360;
   const events = useMemo(
@@ -141,7 +150,7 @@ export default function App() {
     window.history.replaceState(
       null,
       '',
-      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFootballPlot(plotId ?? '') ? '#venue=football' : isCinemaPlot(plotId ?? '') ? '#venue=cinema' : ''}`,
+      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFarmPlot(plotId ?? '') ? '#venue=farm' : isFootballPlot(plotId ?? '') ? '#venue=football' : isCinemaPlot(plotId ?? '') ? '#venue=cinema' : isZooPlot(plotId ?? '') ? '#venue=zoo' : ''}`,
     );
     if (plotId && focus) city.current?.focus(plotId);
   }, []);
@@ -219,6 +228,7 @@ export default function App() {
   );
   const heading =
     selected?.name ??
+    (selectedFarm ? FARM.name : undefined) ??
     (selectedFootball ? FOOTBALL_VENUE.name : undefined) ??
     selectedVenue?.name ??
     (selectedPlot
@@ -245,6 +255,7 @@ export default function App() {
         day={clock.day}
         football={football}
         onListening={setListening}
+        onCinemaListening={setCinemaListening}
         followed={followed}
         onStopFollowing={() => setFollowed(null)}
         onResidentSelect={follow}
@@ -269,16 +280,7 @@ export default function App() {
           </span>
           forktown<span className="brand-dot">.</span>
         </button>
-        <div className="map-clock" title="UTC-synced · One real minute is one town hour">
-          <span className={clock.playing ? 'live-dot' : 'paused-dot'} />
-          <time>{timeLabel(clock.minutes)}</time>
-          <button
-            aria-label={clock.playing ? 'Pause town' : 'Return to live town'}
-            onClick={() => clock.setPlaying(!clock.playing)}
-          >
-            {clock.playing ? <Pause size={14} /> : <Play size={14} />}
-          </button>
-        </div>
+        <CalendarClock clock={clock} />
         <button className="way-in" onClick={() => setModal('guide')}>
           Find your way in <ArrowRight size={16} />
         </button>
@@ -338,6 +340,8 @@ export default function App() {
           playing={clock.playing}
           football={football}
           listening={listening}
+          cinema={cinema}
+          cinemaListening={cinemaListening}
         />
       </nav>
 
@@ -377,7 +381,17 @@ export default function App() {
             </button>
           </div>
           <div className="town-panel-content">
-            {selectedVenue?.kind === 'cinema' ? (
+            {selectedFarm ? (
+              <FarmInfo />
+            ) : selectedVenue?.kind === 'zoo' ? (
+              <ZooInfo
+                minutes={clock.minutes}
+                watching={
+                  residents.filter((r) => r.event?.id === 'zoo' && r.event.phase === 'attending')
+                    .length
+                }
+              />
+            ) : selectedVenue?.kind === 'cinema' ? (
               <CinemaInfo minutes={clock.minutes} day={clock.day} />
             ) : selectedFootball ? (
               <FootballMatch
@@ -435,7 +449,12 @@ export default function App() {
                       <ArrowRight size={15} />
                     </button>
                   )}
-                  {selected.sign.mode !== 'none' && <SignPreview sign={selected.sign} />}
+                  {selected.sign.mode !== 'none' && (
+                    <figure className="home-sign">
+                      <figcaption className="quiet-label">OUTDOOR SIGN</figcaption>
+                      <SignPreview sign={selected.sign} />
+                    </figure>
+                  )}
                   <div className="home-actions">
                     {draft?.id === selected.id ? (
                       <button
@@ -619,21 +638,21 @@ export default function App() {
             <p>One house. One neighbor. Your first contribution.</p>
             <ol>
               <li>
-                <span>01</span>
+                <span aria-hidden="true">1</span>
                 <div>
                   <strong>Fork the town</strong>
                   <p>Clone your copy and run it locally.</p>
                 </div>
               </li>
               <li>
-                <span>02</span>
+                <span aria-hidden="true">2</span>
                 <div>
                   <strong>Make a place</strong>
                   <p>Design your house. Save its JSON file.</p>
                 </div>
               </li>
               <li>
-                <span>03</span>
+                <span aria-hidden="true">3</span>
                 <div>
                   <strong>Join the neighborhood</strong>
                   <p>

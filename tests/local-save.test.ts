@@ -66,6 +66,16 @@ function save(data: unknown = place, headers: Record<string, string> = {}) {
 }
 
 describe('Save a place to the local checkout', () => {
+  it('preserves the female figure when saving and reloading a place file', async () => {
+    const input = placeSchema.parse(place);
+    input.resident.figure = 'female';
+    input.resident.accessory = 'hat';
+    expect((await save(input)).status).toBe(201);
+    const saved = JSON.parse(await readFile(join(root, 'places/tiny-library.json'), 'utf8'));
+    expect(saved.resident.figure).toBe('female');
+    expect(placeSchema.parse(saved)).toEqual(input);
+  });
+
   it('creates one normalized, readable JSON file in the project’s places folder', async () => {
     const response = await save();
     expect(response.status).toBe(201);
@@ -108,6 +118,9 @@ describe('Save a place to the local checkout', () => {
 
   it.each([
     { ...place, id: '../escape' },
+    { ...place, id: 'con' },
+    { ...place, id: 'aux' },
+    { ...place, id: 'com1' },
     { ...place, building: 'unknown' },
     { ...place, script: 'alert(1)' },
     { ...place, creator: 'FORKTOWN' },

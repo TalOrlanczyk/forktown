@@ -1,4 +1,4 @@
-import { ArrowUpRight, Music2, Sun, Film } from 'lucide-react';
+import { ArrowUpRight, Music2, Sun, Film, PawPrint } from 'lucide-react';
 import { eventStatus, type TownEvent } from '../lib/events';
 import { timeLabel } from '../lib/simulation';
 import { FOOTBALL_VENUE, type FootballState } from '../lib/football';
@@ -45,7 +45,13 @@ export default function TownEvents({
       {events.map((event) => {
         const live = eventStatus(event, minutes) === 'Happening now';
         const Icon =
-          event.venue.kind === 'cinema' ? Film : event.venue.kind === 'stage' ? Music2 : Sun;
+          event.venue.kind === 'zoo'
+            ? PawPrint
+            : event.venue.kind === 'cinema'
+              ? Film
+              : event.venue.kind === 'stage'
+                ? Music2
+                : Sun;
         return (
           <button
             className={`event-card ${live ? 'is-live' : ''}`}

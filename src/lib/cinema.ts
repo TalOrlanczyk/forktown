@@ -30,10 +30,28 @@ export const CINEMA_FRAME = {
   height: 450,
 };
 export const CINEMA_START = 20 * 60 + 30;
+/** Listen only when the cinema is on screen and the camera is close to it. */
+export function cinemaListening(
+  camera: { x: number; y: number; zoom: number },
+  width: number,
+  height: number,
+) {
+  if (width <= 0 || height <= 0) return { gain: 0, pan: 0 };
+  const x = CINEMA_FRAME.center.x * camera.zoom + camera.x;
+  const y = (CINEMA_FRAME.center.y - 60) * camera.zoom + camera.y;
+  const distance = Math.hypot((x - width / 2) / (width / 2), (y - height / 2) / (height / 2));
+  return {
+    gain:
+      x > 0 && x < width && y > 0 && y < height
+        ? Math.max(0, Math.min(1, (camera.zoom - 0.4) / 0.8)) * Math.max(0, 1 - distance * 0.45)
+        : 0,
+    pan: Math.max(-1, Math.min(1, (x / width - 0.5) * 1.5)),
+  };
+}
 export const CINEMA_CARD_SECONDS = 6;
 export const CINEMA_SCREEN_RISE = 20 * 60;
 export const CINEMA_SCREEN_ROLL_SECONDS = 6;
-export type FilmArtwork = 'popcorn' | 'moon' | 'duckling';
+export type FilmArtwork = 'popcorn' | 'moon' | 'duckling' | 'race' | 'duel' | 'ufo';
 export type CinemaFilm = {
   id: string;
   title: string;
@@ -63,6 +81,27 @@ export const CINEMA_FILMS: readonly CinemaFilm[] = [
     duration: 60,
     artwork: 'duckling',
   },
+  {
+    id: 'the-tiny-grand-prix',
+    title: 'The Tiny Grand Prix',
+    description: 'Three beetles, bottle-cap racers, and a mop with other plans.',
+    duration: 60,
+    artwork: 'race',
+  },
+  {
+    id: 'duel-at-dusk',
+    title: 'Duel at Dusk',
+    description: 'Two swords cross on a castle bridge. Only one feather will fall.',
+    duration: 60,
+    artwork: 'duel',
+  },
+  {
+    id: 'visitors-over-forktown',
+    title: 'Visitors over Forktown',
+    description: 'A flying saucer arrives, and three night owls take an unexpected trip.',
+    duration: 60,
+    artwork: 'ufo',
+  },
 ];
 export type CinemaSlot = {
   kind: 'opening' | 'film' | 'interval' | 'closing';
@@ -72,7 +111,9 @@ export type CinemaSlot = {
   nextFilm?: CinemaFilm;
 };
 
-/** A day's shared bill selects three different films, independent of registry order. */
+/** The UTC-based town day is the only seed: hosts, sessions, and reloads share a bill.
+ * Registry order never changes the three selected films or their screening order.
+ */
 export function cinemaProgram(day: number, library: readonly CinemaFilm[] = CINEMA_FILMS) {
   if (
     library.length < 3 ||
@@ -149,7 +190,7 @@ export function cinemaAt(minutes: number, day = 0) {
   };
 }
 
-/** Half the night owls choose cinema; the rest can join the disco or take their usual walk. */
+/** Half the eligible night owls choose cinema; they can join the disco afterward if time permits. */
 export function cinemaGuests<
   T extends { id: string; resident: { routine: { evening: string; night: string } } },
 >(homes: readonly T[], day: number): string[] {

@@ -8,8 +8,8 @@ import { HOUSE_PLOTS } from '../src/lib/events';
 
 describe('Growing the town without moving contributions', () => {
   it('doubles the capacity while preserving every original address and coordinate', () => {
-    const original = createWorldLayout({ rows: 5, columns: 10 });
-    const expanded = createWorldLayout({ rows: 10, columns: 10 });
+    const original = createWorldLayout({ rows: 10, columns: 10 });
+    const expanded = createWorldLayout({ rows: 20, columns: 10 });
     expect(expanded.plots).toHaveLength(original.plots.length * 2);
     for (const plot of original.plots) expect(expanded.getPlot(plot.id)).toEqual(plot);
     expect(expanded.getPlot('A10')).toMatchObject({ x: 39, y: 3 });
@@ -17,7 +17,7 @@ describe('Growing the town without moving contributions', () => {
   });
 
   it.each([
-    { rows: 12, columns: 14 },
+    { rows: 22, columns: 14 },
     { rows: 28, columns: 12 },
   ])('supports later growth to $rows rows and $columns columns', (size) => {
     const future = createWorldLayout(size);
@@ -62,11 +62,11 @@ describe('Growing the town without moving contributions', () => {
     const home = placeSchema.parse({
       ...JSON.parse(readFileSync('places/my-little-place.json', 'utf8')),
       id: 'new-edge',
-      plot: 'J10',
+      plot: 'T10',
     });
     const state = simulateResidents([home], 0)[0];
-    expect(state.home.plot).toBe('J10');
-    expect(state.position).toEqual(plotEntrance(PLOTS.find((plot) => plot.id === 'J10')!));
-    expect(placeSchema.safeParse({ ...home, plot: 'J11' }).success).toBe(false);
+    expect(state.home.plot).toBe('T10');
+    expect(state.position).toEqual(plotEntrance(PLOTS.find((plot) => plot.id === 'T10')!));
+    expect(placeSchema.safeParse({ ...home, plot: 'T11' }).success).toBe(false);
   });
 });

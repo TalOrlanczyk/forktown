@@ -1,5 +1,7 @@
 # Welcome, neighbor
 
+New here? Start with the [visual quick start](README.md): live site → localhost → build → save → pull request, with screenshots and copyable commands.
+
 You don’t need to be an expert to contribute to Forktown. A thoughtful first contribution is a small place with your own name, style, and story.
 
 Want to learn from another house? Choose **Browse house files** in the builder, or select a house in town and click **See the little file behind it**. You can read and copy its actual JSON from `places/`, then return to your draft. After saving locally, **See my saved JSON** opens your new file. Local saves, private previews, and downloads do not publish anything to the shared town; a reviewed and merged pull request is how your house gets there.
@@ -38,16 +40,16 @@ Copy `examples/my-little-place.json` to `places/your-unique-id.json`. Do not cha
 
 `A1` is an example. Check that your chosen plot is still open before submitting.
 
-| Field        | What to put here                                                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. |
-| `name`       | A place name, 3–32 characters. International characters are welcome.                                                               |
-| `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                            |
-| `plot`       | An unoccupied plot shown in the town map (currently rows A�E, columns 1�10).                                                       |
-| `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                           |
-| `color`      | A six-digit hex color, such as `#789B76`.                                                                                          |
-| `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                          |
-| `story`      | A personal description of 10–180 characters.                                                                                       |
+| Field        | What to put here                                                                                                                                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. Windows device names (`con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`) are reserved; add a word, such as `aux-cafe`. |
+| `name`       | A place name, 3–32 characters. International characters are welcome.                                                                                                                                                                                             |
+| `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                                                                                                                                                          |
+| `plot`       | An unoccupied plot shown in the town map (currently rows A-T, columns 1-10).                                                                                                                                                                                     |
+| `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                                                                                                                                                         |
+| `color`      | A six-digit hex color, such as `#789B76`.                                                                                                                                                                                                                        |
+| `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                                                                                                                                                        |
+| `story`      | A personal description of 10–180 characters.                                                                                                                                                                                                                     |
 
 Add only your own place file. There is no shared list to edit. Plot positions remain fixed as the town grows.
 
@@ -55,18 +57,18 @@ Each pull request may add **at most one new house**, with **one neighbor** in th
 
 ## Make it more personal
 
-The eight basic fields above still work: omitted `design`, `resident`, and `sign` objects get friendly defaults. Use the builder or `examples/living-place.json` when you want to customize them. If you include an object, include all its fields.
+The eight basic fields above still work: omitted `design`, `resident`, and `sign` objects get friendly defaults. Use the builder or `examples/living-place.json` when you want to customize them. If you include an object, include its required fields; `resident.figure` and `resident.routine.night` can be omitted.
 
 - **Home:** `design` sets wall and trim hex colors, 1-3 floors, a `classic` / `flat` / `gable` roof, `cross` / `round` / `shutters` windows, `wildflowers` / `paving` / `vegetables` garden, and an optional `porch` or `balcony` feature (`none` is also valid). The top-level `color` sets the roof color. `classic` uses the building family's original roof.
-- **Neighbor:** `resident` sets a name (2-24 characters), skin/hair/outfit hex colors, `none` / `hat` / `glasses` accessory, and a greeting (1-24 characters).
-- **Routine:** morning (06:00-12:00), afternoon (12:00-18:00), and evening (18:00-22:00) each choose `stroll`, `work`, or `home`. The last two mean working and relaxing at home. Night (22:00-06:00) chooses `sleep` (the default) or `stroll` (Be a night owl). Up to eight night owls join the Little Stage's 23:30–02:30 party, leaving home after 22:30 and returning by 04:30. Others take one three-hour moonlit walk near home, starting between 22:00 and 02:00, and are back asleep by 05:00. No meetings, destinations, or other residents' names to configure.
+- **Neighbor:** `resident` sets a name (2-24 characters), a `male` / `female` figure, skin/hair/outfit hex colors, `none` / `hat` / `glasses` accessory, and a greeting (1-40 characters). Choose **Figure** in the Neighbor tab, or add `"figure": "female"` inside your JSON's `resident` object. Omitted `figure` uses the original male artwork, so existing houses and saved drafts keep their appearance. Both figures support every accessory and daily activity. Update older forks before adding this field: older validators reject it.
+- **Routine:** morning (06:00-12:00), afternoon (12:00-18:00), and evening (18:00-22:00) each choose `stroll`, `work`, or `home`. The last two mean working and relaxing at home. Night (22:00-06:00) chooses `sleep` (the default) or `stroll` (Be a night owl). Up to eight night owls can join the Little Stage's 23:30–02:30 party, including cinema guests who have time to walk over afterward. Arrivals and departures vary. Free time includes short moonlit walks and doorstep breaks, with a consistent individual bedtime between midnight and 05:00. No meetings, destinations, or other residents' names to configure.
 - **Outdoor sign:** choose `none`, `text`, or `html`. Text signs have up to 18 characters plus `color` and `background`. HTML artwork uses the small language described in [sign artwork](docs/SIGN_ARTWORK.md).
 
 One place brings one resident. A resident can be fictional; the creator credit should be your GitHub username. To change your own home or daily routine later, edit your existing JSON file and submit another PR.
 
 The Little Stage (B5) and Lunch Green (C5) are public venues, reserved for everyone. Choose another plot for your house. Neighbors who choose `stroll` in the afternoon or evening may walk to a town event, enjoy it, and walk home. There is no extra scheduling to configure, and work/home routines stay indoors. Lunch events run 13:00–16:00; evening shows run 19:00–21:00, in town time. Everyone sees the same daily lineup when their device clocks agree.
 
-The Meadow Ground also reserves F3–F5 and G3–G5 for daytime four-a-side football. The town has 100 plots, with 92 available for houses before existing homes are counted. Morning and afternoon strollers can stop to watch a match and walk home; no extra fields are needed in your JSON. See [Football at the Meadow Ground](docs/FOOTBALL.md).
+The Meadow Ground also reserves F3–F5 and G3–G5 for daytime four-a-side football. The Starlight Cinema, Willow Grove Zoo, and Moon Harvest Farm reserve plots too; [Expanding the town](docs/EXPANDING_THE_TOWN.md) lists every reserved plot. The town has 200 plots, with 152 available for houses before existing homes are counted. Morning and afternoon strollers can stop to watch a match and walk home; no extra fields are needed in your JSON. See [Football at the Meadow Ground](docs/FOOTBALL.md).
 
 The town follows a shared UTC-based day: one real minute equals one town hour. The cycle repeats every 24 minutes, starting at UTC midnight. Visitors can pause their view; returning to live catches up to the current town time. Following a neighbor keeps the camera with them; dragging the map or pressing Stop following returns to exploring.
 
