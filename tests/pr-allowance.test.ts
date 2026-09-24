@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SUBPROCESS_TEST, SUBPROCESS_TIMEOUT } from './subprocess-timeout';
 
 const script = fileURLToPath(new URL('../scripts/check-pr-places.mjs', import.meta.url));
 const prefix = join(tmpdir(), 'forktown-pr-allowance-');
@@ -37,7 +38,7 @@ beforeEach(() => {
   file('README.md', 'Town');
   commit();
   git('checkout', '-qb', 'contribution');
-});
+}, SUBPROCESS_TIMEOUT);
 
 afterEach(() => {
   // Only remove the exact temporary repository created by this test.
@@ -46,7 +47,7 @@ afterEach(() => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-describe('The committed PR house allowance', () => {
+describe('The committed PR house allowance', SUBPROCESS_TEST, () => {
   it('allows code/docs changes and edits to existing houses without a new house', () => {
     file('README.md', 'Updated guide');
     file('places/existing.json', '{"name":"Updated house"}');
