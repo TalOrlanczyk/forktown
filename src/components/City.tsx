@@ -14,7 +14,6 @@ import { project, WORLD_BOUNDS } from '../lib/world';
 import {
   FOOTBALL_CENTER,
   FOOTBALL_VENUE,
-  GROUND,
   isFootballPlot,
   footballListening,
   type FootballState,
@@ -194,19 +193,22 @@ const City = forwardRef<CityHandle, Props>(function City(
   const neighborhoodCamera = useCallback(
     (width: number, height: number): Camera => {
       const overview = defaultCamera(width, height);
-      const points = [
+      const all = [
         ...initialPlaces.current.map((place) => place.plot),
-        ...VENUES.filter((venue) => venue.kind !== 'zoo').map((venue) => venue.plot),
+        ...VENUES.filter((venue) => venue.kind === 'green' || venue.kind === 'stage').map(
+          (venue) => venue.plot,
+        ),
       ].flatMap((id) => {
         const plot = getPlot(id);
         return plot ? [plotCenter(plot)] : [];
       });
-      points.push(
-        project(GROUND.left, GROUND.bottom),
-        project(GROUND.right, GROUND.top),
-        project(GROUND.right, GROUND.bottom),
-      );
-      if (!points.length) return overview;
+      if (!all.length) return overview;
+      // Frame where people live. A lone far-off house should not zoom the opening view back out.
+      const median = (values: number[]) => values.sort((a, b) => a - b)[values.length >> 1];
+      const mid = { x: median(all.map((p) => p.x)), y: median(all.map((p) => p.y)) };
+      const distance = (p: { x: number; y: number }) => Math.hypot(p.x - mid.x, p.y - mid.y);
+      const typical = median(all.map(distance));
+      const points = all.filter((p) => distance(p) <= Math.max(typical * 2.2, 260));
       const left = Math.min(...points.map((point) => point.x)) - 110;
       const right = Math.max(...points.map((point) => point.x)) + 110;
       const top = Math.min(...points.map((point) => point.y)) - 145;
