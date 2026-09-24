@@ -1,0 +1,41 @@
+{
+  "id": "rehovot-orchard",
+  "name": "Rehovot Orchard",
+  "creator": "Adi1231234",
+  "plot": "C6",
+  "building": "greenhouse",
+  "color": "#e08a3c",
+  "decoration": "tree",
+  "story": "A little greenhouse from Rehovot, where oranges grew long before the labs did. Take a lemon on your way out.",
+  "design": {
+    "wall": "#f4ead5",
+    "trim": "#5e7a4a",
+    "floors": 1,
+    "roof": "classic",
+    "windows": "cross",
+    "garden": "vegetables",
+    "feature": "porch"
+  },
+  "resident": {
+    "name": "Adi",
+    "figure": "male",
+    "skin": "#D9B68B",
+    "hair": "#3b2a20",
+    "outfit": "#e08a3c",
+    "accessory": "none",
+    "greeting": "Shalom, neighbor!",
+    "routine": {
+      "morning": "stroll",
+      "afternoon": "work",
+      "evening": "stroll",
+      "night": "sleep"
+    }
+  },
+  "sign": {
+    "mode": "text",
+    "text": "REHOVOT",
+    "color": "#ffd58a",
+    "background": "#5e7a4a",
+    "html": ""
+  }
+}
